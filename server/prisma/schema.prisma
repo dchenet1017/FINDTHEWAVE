@@ -1,0 +1,324 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  WAVELEADER
+  BUSINESS
+  ADMIN
+}
+
+enum BusinessType {
+  BAR
+  RESTAURANT
+  ENTERTAINMENT
+  FITNESS
+  WELLNESS
+  HOTEL
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DECLINED
+}
+
+enum CheckInMethod {
+  MANUAL
+  QR_CODE
+  GEOFENCE
+}
+
+enum EventType {
+  WORKSHOP
+  SEMINAR
+  EXPERIENCE
+  MEETUP
+  BAR_CRAWL
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  firstName       String?
+  lastName        String?
+  avatar          String?
+  phone           String?
+  role            Role      @default(USER)
+  isVerified      Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  verificationToken String?
+  resetToken      String?
+  resetTokenExpiry DateTime?
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  waveLeader      WaveLeader?
+  business        Business?
+  bookings        Booking[]
+  checkIns        CheckIn[]
+  communityMemberships CommunityMembership[]
+  rewards         UserReward?
+  notifications   Notification[]
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
+
+model WaveLeader {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String
+  specialty       String
+  description     String   @db.Text
+  hourlyRate      Decimal  @db.Decimal(10, 2)
+  rating          Decimal  @default(0) @db.Decimal(3, 2)
+  totalReviews    Int      @default(0)
+  totalBookings   Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  isVerified      Boolean  @default(false)
+  portfolioImages String[]
+  tags            String[]
+  location        String?
+  latitude        Decimal? @db.Decimal(10, 8)
+  longitude       Decimal? @db.Decimal(11, 8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  bookings        Booking[]
+  communityAssignments CommunityWaveLeader[]
+}
+
+model Business {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  description     String   @db.Text
+  type            BusinessType
+  address         String
+  city            String
+  state           String
+  zipCode         String
+  latitude        Decimal  @db.Decimal(10, 8)
+  longitude       Decimal  @db.Decimal(11, 8)
+  phone           String?
+  website         String?
+  images          String[]
+  rating          Decimal  @default(0) @db.Decimal(3, 2)
+  totalReviews    Int      @default(0)
+  isVerified      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  approvalStatus  ApprovalStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  promotions      Promotion[]
+  advertisements  Advertisement[]
+  events          Event[]
+  checkIns        CheckIn[]
+  partnerships    Partnership[] @relation("BusinessPartnership")
+  partnerOf       Partnership[] @relation("PartnerBusiness")
+}
+
+model Community {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  description     String   @db.Text
+  icon            String
+  color           String
+  totalMembers    Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  members         CommunityMembership[]
+  waveLeaders     CommunityWaveLeader[]
+}
+
+model CommunityMembership {
+  id          String   @id @default(cuid())
+  userId      String
+  communityId String
+  isAvailable Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, communityId])
+}
+
+model CommunityWaveLeader {
+  id            String   @id @default(cuid())
+  waveLeaderId  String
+  communityId   String
+  assignedAt    DateTime @default(now())
+  
+  waveLeader    WaveLeader @relation(fields: [waveLeaderId], references: [id], onDelete: Cascade)
+  community     Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  @@unique([waveLeaderId, communityId])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  userId          String
+  waveLeaderId    String
+  status          BookingStatus @default(PENDING)
+  scheduledDate   DateTime
+  scheduledTime   String
+  duration        Int           // in minutes
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  serviceFee      Decimal       @db.Decimal(10, 2)
+  notes           String?       @db.Text
+  cancelReason    String?
+  rating          Int?
+  review          String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  user            User          @relation(fields: [userId], references: [id])
+  waveLeader      WaveLeader    @relation(fields: [waveLeaderId], references: [id])
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  userId      String
+  businessId  String
+  method      CheckInMethod
+  points      Int      @default(10)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  business    Business @relation(fields: [businessId], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  message     String   @db.Text
+  data        Json?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isRead])
+}
+
+model UserReward {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  points      Int      @default(0)
+  totalEarned Int      @default(0)
+  totalSpent  Int      @default(0)
+  level       Int      @default(1)
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Promotion {
+  id          String   @id @default(cuid())
+  businessId  String
+  title       String
+  description String   @db.Text
+  discount    String
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Advertisement {
+  id            String   @id @default(cuid())
+  businessId    String
+  title         String
+  description   String   @db.Text
+  dailyRate     Decimal  @db.Decimal(10, 2)
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id            String      @id @default(cuid())
+  businessId    String?
+  title         String
+  description   String      @db.Text
+  type          EventType
+  category      String
+  address       String
+  latitude      Decimal     @db.Decimal(10, 8)
+  longitude     Decimal     @db.Decimal(11, 8)
+  startDate     DateTime
+  endDate       DateTime
+  price         Decimal     @db.Decimal(10, 2)
+  capacity      Int
+  enrolled      Int         @default(0)
+  images        String[]
+  tags          String[]
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  business      Business?   @relation(fields: [businessId], references: [id])
+}
+
+model Partnership {
+  id              String   @id @default(cuid())
+  businessId      String
+  partnerId       String
+  offerDescription String  @db.Text
+  partnerOffer    String   @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  business        Business @relation("BusinessPartnership", fields: [businessId], references: [id])
+  partner         Business @relation("PartnerBusiness", fields: [partnerId], references: [id])
+  
+  @@unique([businessId, partnerId])
+}

@@ -1,0 +1,81 @@
+.wavefinder-marker {
+  position: relative;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+.marker-pin {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.marker-pin .marker-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #0c0c0f;
+  border-radius: 50%;
+  top: 5px;
+  left: 5px;
+}
+
+.marker-pin.marker-selected {
+  box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.35), 0 6px 12px rgba(0, 0, 0, 0.35);
+}
+
+.wavefinder-marker:hover .marker-pin {
+  transform: rotate(-45deg) scale(1.08);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.35);
+}
+
+.marker-sponsored .marker-pulse {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  animation: marker-pulse 1.8s infinite;
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.mapboxgl-popup {
+  max-width: 320px;
+}
+
+.mapboxgl-popup-content {
+  background: #181818;
+  color: #f5f5f5;
+  border: 1px solid #2f2f2f;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: #181818 !important;
+  border-bottom-color: #181818 !important;
+}
+
