@@ -1,13 +1,23 @@
 import { useEffect, useMemo } from 'react'
 import type { Map as MapboxMap, GeoJSONSource, MapLayerMouseEvent } from 'mapbox-gl'
 import { markerColors } from '@/lib/mapbox'
-import type { WaveLeader } from '../../../../shared/types/business'
+
+/** Minimal shape needed for map markers (e.g. WaveLeaderDiscovery or WaveLeader) */
+export interface WaveLeaderMapItem {
+  id: string
+  latitude?: number | null
+  longitude?: number | null
+  displayName?: string
+  rating?: number
+  isAvailable?: boolean
+  [key: string]: unknown
+}
 
 type Props = {
   map: MapboxMap | null
-  waveLeaders: WaveLeader[]
+  waveLeaders: WaveLeaderMapItem[]
   selectedId?: string | null
-  onClick?: (wl: WaveLeader) => void
+  onClick?: (wl: WaveLeaderMapItem) => void
 }
 
 const SOURCE_ID = 'waveleaders'
@@ -115,7 +125,7 @@ export function WaveLeaderMarkerLayer({ map, waveLeaders, selectedId, onClick }:
     const handler = (e: MapLayerMouseEvent) => {
       const feat = map.queryRenderedFeatures(e.point, { layers: [POINT_LAYER_ID] })[0]
       if (!feat?.properties?.data) return
-      const wl = JSON.parse(feat.properties.data) as WaveLeader
+      const wl = JSON.parse(feat.properties.data) as WaveLeaderMapItem
       onClick?.(wl)
     }
     map.on('click', POINT_LAYER_ID, handler)

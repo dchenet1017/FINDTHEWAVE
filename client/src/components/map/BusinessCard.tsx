@@ -21,6 +21,7 @@ const typeColors: Record<string, string> = {
 
 export function BusinessCard({ business, selected, onClick }: BusinessCardProps) {
   const hasPromo = (business.promotions && business.promotions.length > 0) || false
+  const isSponsored = Boolean((business as any).isSponsored || (business as any).activeAdvertisement)
   const color = typeColors[business.type] || typeColors.OTHER
   const rating =
     typeof (business as any).rating === 'number'
@@ -60,6 +61,11 @@ export function BusinessCard({ business, selected, onClick }: BusinessCardProps)
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-white line-clamp-1">{business.name}</p>
+          {isSponsored && (
+            <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+              Sponsored
+            </Badge>
+          )}
           {business.isVerified && (
             <ShieldCheck className="h-4 w-4 text-success shrink-0" />
           )}

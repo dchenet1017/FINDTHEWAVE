@@ -70,3 +70,75 @@ export function formatDistance(miles: number) {
 
 export { mapboxgl }
 
+/**
+ * Mapbox Geocoding API - search for addresses
+ */
+export async function geocodeAddress(query: string): Promise<
+  Array<{
+    id: string
+    place_name: string
+    center: [number, number]
+    text: string
+  }>
+> {
+  const token = mapboxgl.accessToken
+  if (!token) return []
+
+  const encoded = encodeURIComponent(query)
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&limit=5&types=address,place`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.features) return []
+  return data.features.map((f: any) => ({
+    id: f.id,
+    place_name: f.place_name,
+    center: f.center,
+    text: f.text,
+  }))
+}
+
+/**
+ * Generate GeoJSON polygon approximating a circle
+ * @param center [lng, lat]
+ * @param radiusMiles radius in miles
+ * @param points number of points (default 64)
+ */
+export function createCircleGeoJSON(
+  center: [number, number],
+  radiusMiles: number,
+  points = 64
+): { type: 'Polygon'; coordinates: [number, number][][] } {
+  const [lng, lat] = center
+  const kmPerMile = 1.60934
+  const radiusKm = radiusMiles * kmPerMile
+  const coords: [number, number][] = []
+
+  for (let i = 0; i <= points; i++) {
+    const angle = (i / points) * 2 * Math.PI
+    const dx = (radiusKm / 111.32) * Math.cos(angle)
+    const dy = (radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angle)
+    coords.push([lng + dx, lat + dy])
+  }
+
+  return {
+    type: 'Polygon',
+    coordinates: [coords],
+  }
+}
+
+/**
+ * Reverse geocode: get address from coordinates
+ */
+export async function reverseGeocode(
+  lng: number,
+  lat: number
+): Promise<string> {
+  const token = mapboxgl.accessToken
+  if (!token) return ''
+
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&limit=1`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.features?.length) return ''
+  return data.features[0].place_name || ''
+}

@@ -1,19 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Switch } from '@/components/ui/Switch'
+import { Button } from '@/components/ui/Button'
 import { MapWidget } from '@/components/map/MapWidget'
+import { WaveLeaderStats } from '@/components/waveleader/WaveLeaderStats'
+import { useWaveLeaderDashboard, useWaveLeaderStats } from '@/hooks/useWaveLeaderDashboard'
 import { useWaveLeaderMap } from '@/hooks/waveleader/useWaveLeaderMap'
+import { CheckCircle, XCircle, MapPin, ChevronRight } from 'lucide-react'
 import type { Business } from '../../../../shared/types/business'
-import { ShieldCheck, MapPin } from 'lucide-react'
 
 export default function WaveLeaderDashboard() {
   const navigate = useNavigate()
+  const { data: dashboard } = useWaveLeaderDashboard()
+  const { data: stats } = useWaveLeaderStats()
   const { center, businesses } = useWaveLeaderMap()
-  const [available, setAvailable] = useState(true)
-  const [selected, setSelected] = useState<Business | null>(null)
   const bizList: Business[] = (businesses as Business[]) || []
 
   const serviceCenter = useMemo(() => {
@@ -31,112 +31,184 @@ export default function WaveLeaderDashboard() {
     }))
   }, [bizList])
 
-  const stats = [
-    { title: 'This Week Bookings', value: '5' },
-    { title: 'Earnings', value: '$820' },
-    { title: 'Rating', value: '4.8' },
-    { title: 'Response Rate', value: '95%' },
-  ]
+  const upcomingBookings = dashboard?.upcomingBookings ?? []
+  const recentReviews = dashboard?.recentReviews ?? []
+  const earningsChart = dashboard?.earningsChart ?? []
+  const serviceArea = dashboard?.serviceArea
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">WaveLeader Dashboard</h1>
-          <p className="text-gray-400 mt-2">Manage your service area and opportunities.</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-300">
-          <span>Available</span>
-          <Switch checked={available} onCheckedChange={(v) => setAvailable(Boolean(v))} />
+          <h1 className="text-3xl font-bold text-white">
+            Welcome back, {dashboard?.displayName ?? 'WaveLeader'}!
+          </h1>
+          <div className="flex items-center gap-2 mt-2">
+            {dashboard?.isAvailable ? (
+              <span className="inline-flex items-center gap-2 text-green-500">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Available</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2 text-red-500">
+                <XCircle className="h-5 w-5" />
+                <span className="font-medium">Unavailable</span>
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.title} className="bg-dark-card border-gray-800">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-sm text-gray-300">{s.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-white">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Stats Row */}
+      <WaveLeaderStats />
 
+      {/* Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        {/* Left: Service Area Map Widget */}
+        <div className="lg:col-span-2 space-y-2">
           <MapWidget
             size="medium"
             markers={markers}
-            center={serviceCenter}
-            onMarkerClick={(m) => {
-              const found = (bizList as any[]).find((b) => b.id === m.id) as Business
-              setSelected(found || null)
-            }}
+            center={serviceCenter ?? serviceArea?.center}
+            title="Service Area"
             onExpand={() => navigate('/waveleader/map')}
           />
-          <p className="text-xs text-gray-400 mt-2">
-            {markers.length} businesses in your area
+          <p className="text-sm text-gray-400">
+            {serviceArea?.businessesCount ?? markers.length} businesses in your
+            service area
           </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/waveleader/map')}
+          >
+            Manage Service Area
+          </Button>
         </div>
+
+        {/* Right: Upcoming Bookings */}
         <Card className="bg-dark-card border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-200">Upcoming bookings</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg text-white">Upcoming Bookings</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigate('/waveleader/bookings')}
+            >
+              View all
+            </Button>
           </CardHeader>
-          <CardContent className="text-sm text-gray-400">
-            No upcoming bookings.
+          <CardContent>
+            {upcomingBookings.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-sm">No upcoming bookings</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => navigate('/waveleader/bookings')}
+                >
+                  View Bookings
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {upcomingBookings.slice(0, 3).map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="p-3 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                  >
+                    <p className="font-medium text-white">{booking.clientName}</p>
+                    <p className="text-sm text-gray-400">
+                      {booking.date} at {booking.time}
+                    </p>
+                    {booking.location && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                        <MapPin className="h-3 w-3" />
+                        {booking.location}
+                      </p>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-2 p-0 h-auto text-primary"
+                      onClick={() => navigate(`/waveleader/bookings/${booking.id}`)}
+                    >
+                      View Details
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {selected && (
-        <Card className="bg-dark-card border-primary/40">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-white">{selected.name}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <MapPin className="h-3 w-3" />
-                  <span>{(selected as any).city || (selected as any).location?.city || 'Unknown'}</span>
-                  {selected.isVerified && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      <ShieldCheck className="h-3 w-3" /> Verified
-                    </Badge>
-                  )}
-                </div>
+      {/* Bottom Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Reviews */}
+        <Card className="bg-dark-card border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-lg text-white">Recent Reviews</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentReviews.length === 0 ? (
+              <p className="text-sm text-gray-400">No reviews yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {recentReviews.slice(0, 3).map((review) => (
+                  <div
+                    key={review.id}
+                    className="p-3 rounded-lg border border-gray-800"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-white">{review.clientName}</p>
+                      <span className="text-amber-400">
+                        ★ {review.rating.toFixed(1)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                      {review.comment}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{review.date}</p>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="secondary">
-                  View Details
-                </Button>
-                <Button size="sm" variant="default">
-                  Propose Collaboration
-                </Button>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 line-clamp-2">
-              {selected.description || 'No description provided.'}
-            </p>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Earnings Chart */}
         <Card className="bg-dark-card border-gray-800">
           <CardHeader>
-            <CardTitle className="text-sm text-gray-200">Recent Reviews</CardTitle>
+            <CardTitle className="text-lg text-white">
+              Earnings (Last 30 Days)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-gray-400">Reviews coming soon.</CardContent>
-        </Card>
-        <Card className="bg-dark-card border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-200">Earnings</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-gray-400">Chart coming soon.</CardContent>
+          <CardContent>
+            {earningsChart.length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center text-gray-400">
+                <p className="text-sm">Chart data coming soon</p>
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-end gap-1">
+                {earningsChart.map((d, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 bg-primary/50 rounded-t min-h-[4px]"
+                    style={{
+                      height: `${Math.max(4, (d.amount / Math.max(...earningsChart.map((e) => e.amount), 1)) * 100)}%`,
+                    }}
+                    title={`${d.date}: $${d.amount}`}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
     </div>
   )
 }
-

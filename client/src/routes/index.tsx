@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -18,12 +18,21 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import UnauthorizedPage from '@/pages/UnauthorizedPage'
 import MapPage from '@/pages/map/MapPage'
 import BusinessDetailPage from '@/pages/business/BusinessDetailPage'
+import CommunitiesPage from '@/pages/communities/CommunitiesPage'
+import CommunityDetailPage from '@/pages/communities/CommunityDetailPage'
+import BecomeWaveLeaderPage from '@/pages/waveleader/BecomeWaveLeaderPage'
+import WaveLeaderRegistrationPage from '@/pages/waveleader/WaveLeaderRegistrationPage'
 
 // Dashboard pages
 import UserDashboard from '@/pages/dashboard/UserDashboard'
 import ProfilePage from '@/pages/dashboard/ProfilePage'
+import SettingsPage from '@/pages/dashboard/SettingsPage'
 import UserMapPage from '@/pages/dashboard/UserMapPage'
-import MyPlacesPage from '@/pages/dashboard/MyPlacesPage'
+import PlacesPage from '@/pages/dashboard/PlacesPage'
+import BookingsPage from '@/pages/dashboard/BookingsPage'
+import RewardsPage from '@/pages/dashboard/RewardsPage'
+import PassportPage from '@/pages/dashboard/PassportPage'
+import MyEventsPage from '@/pages/dashboard/MyEventsPage'
 
 // Admin pages
 import AdminDashboard from '@/pages/admin/AdminDashboard'
@@ -39,9 +48,32 @@ import AdminMapPage from '@/pages/admin/AdminMapPage'
 // Business pages
 import BusinessDashboard from '@/pages/business/BusinessDashboard'
 import BusinessMapPage from '@/pages/business/BusinessMapPage'
+import BusinessAnalyticsPage from '@/pages/business/BusinessAnalyticsPage'
+import AdvertisementsPage from '@/pages/business/AdvertisementsPage'
+import CreateAdPage from '@/pages/business/CreateAdPage'
 
 // WaveLeader pages
 import WaveLeaderDashboard from '@/pages/waveleader/WaveLeaderDashboard'
+import WaveLeaderBookingsPage from '@/pages/waveleader/WaveLeaderBookingsPage'
+import WaveLeaderMapPage from '@/pages/waveleader/WaveLeaderMapPage'
+import WaveLeaderCommunitiesPage from '@/pages/waveleader/WaveLeaderCommunitiesPage'
+import WaveLeaderEarningsPage from '@/pages/waveleader/WaveLeaderEarningsPage'
+import WaveLeaderAnalyticsPage from '@/pages/waveleader/WaveLeaderAnalyticsPage'
+import WaveLeaderProfilePage from '@/pages/waveleader/WaveLeaderProfilePage'
+import WaveLeaderSettingsPage from '@/pages/waveleader/WaveLeaderSettingsPage'
+import PublicWaveLeaderProfilePage from '@/pages/waveleader/PublicWaveLeaderProfilePage'
+import WaveLeadersPage from '@/pages/waveleader/WaveLeadersPage'
+import EventsPage from '@/pages/events/EventsPage'
+import EventDetailsPage from '@/pages/events/EventDetailsPage'
+import EventsManagementPage from '@/pages/business/EventsManagementPage'
+import CreateEventPage from '@/pages/business/CreateEventPage'
+import EventAttendeesPage from '@/pages/business/EventAttendeesPage'
+import EventCheckInPage from '@/pages/business/EventCheckInPage'
+import BookWaveLeaderPage from '@/pages/booking/BookWaveLeaderPage'
+import PaymentPage from '@/pages/booking/PaymentPage'
+import BookingConfirmationPage from '@/pages/booking/BookingConfirmationPage'
+import WriteReviewPage from '@/pages/booking/WriteReviewPage'
+import { RequireAuthMainLayout } from '@/components/auth/RequireAuthMainLayout'
 
 export const router = createBrowserRouter([
   // Public routes
@@ -56,11 +88,42 @@ export const router = createBrowserRouter([
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
       {
+        path: 'booking',
+        element: <RequireAuthMainLayout />,
+        children: [
+          { path: ':waveLeaderId/payment', element: <PaymentPage /> },
+          { path: 'confirmation/:bookingId', element: <BookingConfirmationPage /> },
+          { path: ':bookingId/review', element: <WriteReviewPage /> },
+        ],
+      },
+      {
         path: '',
         element: <MainLayout />,
         children: [
           { path: 'map', element: <MapPage /> },
           { path: 'business/:id', element: <BusinessDetailPage /> },
+          { path: 'communities', element: <CommunitiesPage /> },
+          { path: 'communities/:id', element: <CommunityDetailPage /> },
+          { path: 'become-waveleader', element: <BecomeWaveLeaderPage /> },
+          { path: 'waveleader/:id/profile', element: <PublicWaveLeaderProfilePage /> },
+          { path: 'waveleaders', element: <WaveLeadersPage /> },
+          { path: 'events', element: <EventsPage /> },
+          { path: 'events/:id', element: <EventDetailsPage /> },
+          { path: 'booking/:waveLeaderId', element: <BookWaveLeaderPage /> },
+        ],
+      },
+    ],
+  },
+
+  // WaveLeader registration (protected, USER+)
+  {
+    path: '/waveleader/register',
+    element: <ProtectedRoute allowedRoles={['USER', 'WAVELEADER', 'ADMIN']} />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          { index: true, element: <WaveLeaderRegistrationPage /> },
         ],
       },
     ],
@@ -75,11 +138,15 @@ export const router = createBrowserRouter([
         element: <UserLayout />,
         children: [
           { index: true, element: <UserDashboard /> },
-          { path: 'profile', element: <ProfilePage /> },
           { path: 'map', element: <UserMapPage /> },
-          { path: 'explore', element: <UserMapPage /> },
-          { path: 'places', element: <MyPlacesPage /> },
-          { path: 'settings', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Settings</h1></div> },
+          { path: 'places', element: <PlacesPage /> },
+          { path: 'bookings', element: <BookingsPage /> },
+          { path: 'events', element: <MyEventsPage /> },
+          { path: 'passport', element: <PassportPage /> },
+          { path: 'communities', element: <CommunitiesPage /> },
+          { path: 'rewards', element: <RewardsPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'settings', element: <SettingsPage /> },
         ],
       },
     ],
@@ -110,17 +177,33 @@ export const router = createBrowserRouter([
   // Business routes
   {
     path: '/business',
-    element: <ProtectedRoute allowedRoles={['BUSINESS', 'ADMIN']} />,
+    element: <ProtectedRoute allowedRoles={['BUSINESS']} />,
     children: [
+      {
+        index: true,
+        element: <Navigate to="/business/dashboard" replace />,
+      },
       {
         element: <BusinessLayout />,
         children: [
           { path: 'dashboard', element: <BusinessDashboard /> },
-              { path: 'map', element: <BusinessMapPage /> },
-              { path: 'analytics/map', element: <BusinessMapPage /> },
-          { path: 'events', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Events</h1></div> },
-          { path: 'analytics', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Analytics</h1></div> },
-          { path: 'settings', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Business Settings</h1></div> },
+          { path: 'analytics', element: <BusinessAnalyticsPage /> },
+          { path: 'map', element: <BusinessMapPage /> },
+          { path: 'ads', element: <AdvertisementsPage /> },
+          { path: 'ads/create', element: <CreateAdPage /> },
+          { path: 'ads/:id/edit', element: <CreateAdPage /> },
+          { path: 'ads/:id/analytics', element: <div className="p-8 text-center text-gray-400">Ad analytics page coming soon</div> },
+          { path: 'events', element: <EventsManagementPage /> },
+          { path: 'events/create', element: <CreateEventPage /> },
+          { path: 'events/:id/edit', element: <CreateEventPage /> },
+          { path: 'events/:id/attendees', element: <EventAttendeesPage /> },
+          { path: 'events/:id/check-in', element: <EventCheckInPage /> },
+          { path: 'promotions', element: <div className="p-8 text-center text-gray-400">Promotions page coming soon</div> },
+          { path: 'reviews', element: <div className="p-8 text-center text-gray-400">Reviews page coming soon</div> },
+          { path: 'customers', element: <div className="p-8 text-center text-gray-400">Customers page coming soon</div> },
+          { path: 'revenue', element: <div className="p-8 text-center text-gray-400">Revenue page coming soon</div> },
+          { path: 'profile', element: <div className="p-8 text-center text-gray-400">Profile page coming soon</div> },
+          { path: 'settings', element: <div className="p-8 text-center text-gray-400">Settings page coming soon</div> },
         ],
       },
     ],
@@ -135,9 +218,13 @@ export const router = createBrowserRouter([
         element: <WaveLeaderLayout />,
         children: [
           { path: 'dashboard', element: <WaveLeaderDashboard /> },
-          { path: 'bookings', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Bookings</h1></div> },
-          { path: 'earnings', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Earnings</h1></div> },
-          { path: 'settings', element: <div className="p-6"><h1 className="text-3xl font-bold text-white">Wave Leader Settings</h1></div> },
+          { path: 'bookings', element: <WaveLeaderBookingsPage /> },
+          { path: 'map', element: <WaveLeaderMapPage /> },
+          { path: 'communities', element: <WaveLeaderCommunitiesPage /> },
+          { path: 'earnings', element: <WaveLeaderEarningsPage /> },
+          { path: 'analytics', element: <WaveLeaderAnalyticsPage /> },
+          { path: 'profile', element: <WaveLeaderProfilePage /> },
+          { path: 'settings', element: <WaveLeaderSettingsPage /> },
         ],
       },
     ],

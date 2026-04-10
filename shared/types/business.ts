@@ -56,6 +56,13 @@ export interface Business {
     avatar?: string | null
   }
   promotions?: Promotion[]
+  isSponsored?: boolean
+  activeAdvertisement?: {
+    id: string
+    title?: string
+    ctaText?: string
+    targetRadius?: number
+  } | null
   createdAt: string
   updatedAt: string
   // Aggregates

@@ -38,7 +38,7 @@ export function MapMarker({
   const elRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!map) return
+    if (!map || typeof map.getContainer !== 'function' || !map.getContainer()) return
 
     const el = document.createElement('div')
     el.className = 'wavefinder-marker'
@@ -72,27 +72,27 @@ export function MapMarker({
 
     // Popup
     if (children) {
-      const popup = new mapboxgl.Popup({
-        closeButton: false,
-        offset: 24,
-        maxWidth: '320px',
-      }).setDOMContent(createPopupContent(children))
+      try {
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          offset: 24,
+          maxWidth: '320px',
+        }).setDOMContent(createPopupContent(children))
 
-      marker.setPopup(popup)
-      popupRef.current = popup
+        marker.setPopup(popup)
+        popupRef.current = popup
+      } catch (_) {}
     }
 
     markerRef.current = marker
     elRef.current = el
 
     return () => {
-      if (onClick && el) {
-        el.removeEventListener('click', onClick)
-      }
-      if (popupRef.current) {
-        popupRef.current.remove()
-      }
-      marker.remove()
+      try {
+        if (onClick && el) el.removeEventListener('click', onClick)
+        if (popupRef.current) popupRef.current.remove()
+        marker.remove()
+      } catch (_) {}
     }
   }, [map, position[0], position[1], type, isSponsored, isSelected, onClick, children])
 

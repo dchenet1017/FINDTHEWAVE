@@ -5,6 +5,8 @@ import { errorResponse } from '../utils/response'
 export interface AuthenticatedRequest extends FastifyRequest {
   user: {
     userId: string
+    /** Same as userId (Prisma User.id) */
+    id: string
     role: 'USER' | 'WAVELEADER' | 'BUSINESS' | 'ADMIN'
   }
 }
@@ -43,6 +45,7 @@ export const authenticate = async (
     // Attach user info to request
     ;(request as AuthenticatedRequest).user = {
       userId: decoded.userId,
+      id: decoded.userId,
       role: decoded.role,
     }
   } catch (error: any) {
@@ -61,6 +64,42 @@ export const authenticate = async (
     return reply.code(401).send(
       errorResponse('UNAUTHORIZED', 'Authentication failed')
     )
+  }
+}
+
+/**
+ * Optional authentication - sets request.user if valid token present,
+ * but does NOT fail if no token or invalid token (for public routes that can show extra info when logged in)
+ */
+export const optionalAuthenticate = async (
+  request: FastifyRequest,
+  _reply: FastifyReply
+) => {
+  try {
+    const authHeader = request.headers.authorization
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+
+    if (!token) {
+      return
+    }
+
+    const decoded = request.server.jwt.verify<{
+      userId: string
+      role: 'USER' | 'WAVELEADER' | 'BUSINESS' | 'ADMIN'
+    }>(token)
+
+    ;(request as AuthenticatedRequest).user = {
+      userId: decoded.userId,
+      id: decoded.userId,
+      role: decoded.role,
+    }
+  } catch {
+    // Silently ignore - request continues without user
   }
 }
 

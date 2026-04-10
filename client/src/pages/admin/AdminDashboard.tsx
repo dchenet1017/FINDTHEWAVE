@@ -11,7 +11,6 @@ import { QuickActions } from '@/components/admin/QuickActions'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 import { MapWidget } from '@/components/map/MapWidget'
 import { businessService } from '@/services/business.service'
-import type { Business } from '../../../../shared/types/business'
 
 export default function AdminDashboard() {
   const { user } = useAuthStore()
@@ -21,7 +20,7 @@ export default function AdminDashboard() {
     queryKey: ['admin', 'map', 'businesses'],
     queryFn: async () => {
       const res = await businessService.getBusinesses({ limit: 200, page: 1 })
-      return res.data.items || res.data.businesses || res.data || []
+      return Array.isArray(res.data?.items) ? res.data.items : []
     },
     staleTime: 60 * 1000,
   })
@@ -124,7 +123,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2">
           <MapWidget
             size="large"
-            markers={(businessMapData as Business[]) || []}
+            markers={Array.isArray(businessMapData) ? businessMapData : []}
             onExpand={() => navigate('/admin/map')}
           />
         </div>

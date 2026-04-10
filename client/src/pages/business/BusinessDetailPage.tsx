@@ -125,6 +125,7 @@ export default function BusinessDetailPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold text-white">{business.name}</h1>
+                  {(business as any).isSponsored && <Badge variant="warning">Sponsored</Badge>}
                   {business.isVerified && <ShieldCheck className="h-5 w-5 text-success" />}
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">

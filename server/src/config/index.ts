@@ -14,6 +14,8 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
   FRONTEND_URL: z.string().url(),
   REDIS_URL: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 })
 
 const env = envSchema.parse(process.env)
@@ -34,6 +36,10 @@ export const config = {
   },
   redis: {
     url: env.REDIS_URL,
+  },
+  stripe: {
+    secretKey: env.STRIPE_SECRET_KEY,
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
   },
   isDev: env.NODE_ENV === 'development',
   isProd: env.NODE_ENV === 'production',

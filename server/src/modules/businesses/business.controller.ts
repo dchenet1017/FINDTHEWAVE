@@ -27,16 +27,30 @@ export const businessController = {
 
   nearby: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { lat, lng, radius, types, limit } = (request as any).validatedQuery
+      const query = (request as any).validatedQuery
+      // Support both lat/lng and latitude/longitude
+      const lat = query.lat ?? query.latitude
+      const lng = query.lng ?? query.longitude
+      // Support both radius and radiusMiles
+      const radius = query.radius ?? query.radiusMiles ?? 5
+      const { types, limit } = query
+      
+      if (!lat || !lng) {
+        return reply.code(400).send(errorResponse('BAD_REQUEST', 'Latitude and longitude are required'))
+      }
+      
       const data = await businessService.getNearbyBusinesses({
-        lat,
-        lng,
-        radius,
+        lat: Number(lat),
+        lng: Number(lng),
+        radius: Number(radius),
         limit,
         types: types ? (types as string).split(',') as any : undefined,
       })
       return reply.send(successResponse(data))
     } catch (error: any) {
+      if (error.statusCode) {
+        return reply.code(error.statusCode).send(errorResponse(error.code || 'ERROR', error.message))
+      }
       return reply.code(500).send(errorResponse('INTERNAL_ERROR', error.message))
     }
   },

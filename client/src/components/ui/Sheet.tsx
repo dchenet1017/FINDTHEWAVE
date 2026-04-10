@@ -83,7 +83,21 @@ export function SheetHeader({
   )
 }
 
-export interface SheetContentProps extends React.HTMLAttributes<HTMLDivElement> {}
+export function SheetTitle({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2 className={cn('text-lg font-semibold', className)} {...props}>
+      {children}
+    </h2>
+  )
+}
+
+export interface SheetContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  side?: 'left' | 'right' | 'top' | 'bottom'
+}
 
 export function SheetContent({
   className,

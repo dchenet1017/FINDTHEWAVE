@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authService } from '@/services/auth.service'
 import type { LoginCredentials, RegisterData } from '@/services/auth.service'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export const useAuth = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { setUser, setTokens, clearAuth, user, isAuthenticated } = useAuthStore()
 
@@ -45,6 +46,13 @@ export const useAuth = () => {
         setTokens(data.data.accessToken, data.data.refreshToken)
         setUser(data.data.user)
         queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+
+        const from = (location.state as { from?: { pathname: string; search?: string } })?.from
+        if (from?.pathname) {
+          navigate(`${from.pathname}${from.search || ''}`, { replace: true })
+          toast.success('Welcome back!')
+          return
+        }
 
         // Redirect based on role
         switch (data.data.user.role) {

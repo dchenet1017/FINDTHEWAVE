@@ -15,6 +15,7 @@ export interface AdminStats {
   recentActivity: Activity[]
   pendingBusinesses: number
   flaggedContent: number
+  pendingWaveLeaders: number
 }
 
 // Mock data generator

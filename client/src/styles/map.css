@@ -79,3 +79,13 @@
   border-bottom-color: #181818 !important;
 }
 
+.wavefinder-mini-popup .mapboxgl-popup-content {
+  padding: 10px;
+  max-width: 280px;
+}
+
+.wavefinder-mini-popup .mapboxgl-popup-content {
+  background: #1a1a1a;
+  border: 1px solid #2f2f2f;
+}
+

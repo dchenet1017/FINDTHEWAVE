@@ -6,6 +6,15 @@ import { config } from './config'
 import { authRoutes } from './modules/auth/auth.routes'
 import adminRoutes from './modules/admin/admin.routes'
 import { businessRoutes } from './modules/businesses/business.routes'
+import businessOwnerRoutes from './modules/business/business.routes'
+import { checkInRoutes } from './modules/checkins/checkin.routes'
+import { communityRoutes } from './modules/communities/community.routes'
+import { userRoutes } from './modules/users/user.routes'
+import { waveleaderRoutes } from './modules/waveleader/waveleader.routes'
+import { waveleadersPublicRoutes } from './modules/waveleaders-public/waveleaders-public.routes'
+import bookingRoutes from './modules/bookings/booking.routes'
+import paymentRoutes from './modules/payments/payment.routes'
+import eventRoutes from './modules/events/event.routes'
 import { errorHandler } from './middleware/errorHandler'
 import { successResponse } from './utils/response'
 
@@ -46,6 +55,15 @@ server.setErrorHandler(errorHandler)
 await server.register(authRoutes, { prefix: '/api/auth' })
 await server.register(adminRoutes, { prefix: '/api/admin' })
 await server.register(businessRoutes, { prefix: '/api/businesses' })
+await server.register(businessOwnerRoutes, { prefix: '/api/business' })
+await server.register(checkInRoutes, { prefix: '/api/checkins' })
+await server.register(communityRoutes, { prefix: '/api/communities' })
+await server.register(userRoutes, { prefix: '/api/users' })
+await server.register(waveleaderRoutes, { prefix: '/api/waveleader' })
+await server.register(waveleadersPublicRoutes, { prefix: '/api/waveleaders' })
+await server.register(bookingRoutes, { prefix: '/api/bookings' })
+await server.register(paymentRoutes, { prefix: '/api/payments' })
+await server.register(eventRoutes, { prefix: '/api/events' })
 
 // Health check
 server.get('/api/health', async () => {

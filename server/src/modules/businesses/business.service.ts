@@ -2,6 +2,8 @@ import { prisma } from '../../lib/prisma'
 import { ApprovalStatus, BusinessType, Prisma } from '@prisma/client'
 import { ForbiddenError, NotFoundError } from '../../utils/errors'
 
+const advertisementRepo = prisma.advertisement as any
+
 let postgisEnabled = false
 const ensurePostgis = async () => {
   if (postgisEnabled) return
@@ -9,9 +11,74 @@ const ensurePostgis = async () => {
     await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS postgis')
     postgisEnabled = true
   } catch (err) {
-    // Ignore if extension cannot be created, queries will fail and surface error
     console.error('PostGIS enable failed:', err)
   }
+}
+
+function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+async function getActiveAdsForBusinesses(businessIds: string[]) {
+  if (!businessIds.length) return []
+  const now = new Date()
+  return advertisementRepo.findMany({
+    where: {
+      businessId: { in: businessIds },
+      isActive: true,
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+async function trackAdImpressions(ads: any[]) {
+  if (!ads.length) return
+  await Promise.all(
+    ads.map((ad) =>
+      advertisementRepo.update({
+        where: { id: ad.id },
+        data: { impressions: { increment: 1 } },
+      }).catch(() => null)
+    )
+  )
+}
+
+async function attachSponsorship<T extends { id: string }>(items: T[]) {
+  const ads = await getActiveAdsForBusinesses(items.map((item) => item.id))
+  const adByBusinessId = new Map<string, any>()
+  for (const ad of ads) {
+    if (!adByBusinessId.has(ad.businessId)) adByBusinessId.set(ad.businessId, ad)
+  }
+  await trackAdImpressions([...adByBusinessId.values()])
+  return items
+    .map((item) => {
+      const activeAd = adByBusinessId.get(item.id) || null
+      return {
+        ...item,
+        isSponsored: Boolean(activeAd),
+        activeAdvertisement: activeAd
+          ? {
+              id: activeAd.id,
+              title: activeAd.title,
+              ctaText: activeAd.ctaText,
+              targetRadius: activeAd.targetRadius,
+            }
+          : null,
+      }
+    })
+    .sort((a: any, b: any) => Number(Boolean(b.isSponsored)) - Number(Boolean(a.isSponsored)))
 }
 
 interface ListParams {
@@ -108,8 +175,10 @@ export const businessService = {
       },
     })
 
+    const decoratedItems = await attachSponsorship(items as any)
+
     return {
-      items,
+      items: decoratedItems,
       total,
       page,
       limit,
@@ -118,15 +187,17 @@ export const businessService = {
   },
 
   async getNearbyBusinesses(params: NearbyParams) {
-    await ensurePostgis()
     const { lat, lng, radius = 5, types, limit = 50 } = params
-    const radiusMeters = radius * 1609.34
-    const typeFilter = types && types.length ? `AND b."type" IN (${types.map((_, i) => `$${i + 4}`).join(',')})` : ''
-    const bindings: any[] = [lng, lat, radiusMeters]
-    if (types && types.length) bindings.push(...types)
 
-    const results = await prisma.$queryRawUnsafe<any[]>(
-      `
+    try {
+      await ensurePostgis()
+      const radiusMeters = radius * 1609.34
+      const typeFilter = types && types.length ? `AND b."type" IN (${types.map((_, i) => `$${i + 4}`).join(',')})` : ''
+      const bindings: any[] = [lng, lat, radiusMeters]
+      if (types && types.length) bindings.push(...types)
+
+      const results = await prisma.$queryRawUnsafe<any[]>(
+        `
       SELECT
         b.*,
         ST_Distance(
@@ -143,13 +214,47 @@ export const businessService = {
       ORDER BY distance ASC
       LIMIT ${limit}
     `,
-      ...bindings
-    )
+        ...bindings
+      )
 
-    return results.map((b) => ({
-      ...b,
-      distance: typeof b.distance === 'string' ? parseFloat(b.distance) : b.distance,
-    }))
+      const normalized = results.map((b) => ({
+        ...b,
+        distance: typeof b.distance === 'string' ? parseFloat(b.distance) : b.distance,
+      }))
+      const decorated = await attachSponsorship(normalized as any)
+      return decorated.sort((a: any, b: any) => {
+        if (Boolean(a.isSponsored) !== Boolean(b.isSponsored)) {
+          return Number(Boolean(b.isSponsored)) - Number(Boolean(a.isSponsored))
+        }
+        return Number(a.distance || 0) - Number(b.distance || 0)
+      })
+    } catch (_) {
+      // Fallback when PostGIS is not available: fetch by bounding box and filter by haversine
+      const deg = radius / 69.0 // rough miles to degrees
+      const businesses = await prisma.business.findMany({
+        where: {
+          latitude: { gte: lat - deg, lte: lat + deg },
+          longitude: { gte: lng - deg, lte: lng + deg },
+          ...(types && types.length ? { type: { in: types as BusinessType[] } } : {}),
+        },
+        take: limit * 3,
+      })
+      const ranked = businesses
+        .map((b) => ({
+          ...b,
+          distance: haversineMiles(lat, lng, Number(b.latitude), Number(b.longitude)),
+        }))
+        .filter((b) => b.distance <= radius)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, limit)
+      const decorated = await attachSponsorship(ranked as any)
+      return decorated.sort((a: any, b: any) => {
+        if (Boolean(a.isSponsored) !== Boolean(b.isSponsored)) {
+          return Number(Boolean(b.isSponsored)) - Number(Boolean(a.isSponsored))
+        }
+        return Number(a.distance || 0) - Number(b.distance || 0)
+      })
+    }
   },
 
   async searchBusinesses(searchTerm: string, location?: { lat: number; lng: number }) {
@@ -177,10 +282,16 @@ export const businessService = {
         lat,
         `%${searchTerm}%`
       )
-      return results
+      const decorated = await attachSponsorship(results as any)
+      return decorated.sort((a: any, b: any) => {
+        if (Boolean(a.isSponsored) !== Boolean(b.isSponsored)) {
+          return Number(Boolean(b.isSponsored)) - Number(Boolean(a.isSponsored))
+        }
+        return Number(a.distance || 0) - Number(b.distance || 0)
+      })
     }
 
-    return prisma.business.findMany({
+    const results = await prisma.business.findMany({
       where: {
         OR: [
           { name: { contains: searchTerm, mode: 'insensitive' } },
@@ -191,11 +302,12 @@ export const businessService = {
       },
       take: 50,
     })
+    return attachSponsorship(results as any)
   },
 
   async getBusinessesInBounds(bounds: Bounds) {
     const { north, south, east, west } = bounds
-    return prisma.business.findMany({
+    const results = await prisma.business.findMany({
       where: {
         latitude: { gte: south, lte: north },
         longitude: { gte: west, lte: east },
@@ -211,6 +323,7 @@ export const businessService = {
         isVerified: true,
       },
     })
+    return attachSponsorship(results as any)
   },
 
   async getBusinessTypeCounts() {
@@ -221,14 +334,47 @@ export const businessService = {
     return groups.map((g) => ({ type: g.type, count: g._count._all }))
   },
 
-  getBusinessById(id: string) {
-    return prisma.business.findUnique({
+  async getBusinessById(id: string) {
+    const business = await prisma.business.findUnique({
       where: { id },
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true, avatar: true } },
         promotions: true,
       },
     })
+    if (!business) return business
+
+    const activeAd = await advertisementRepo.findFirst({
+      where: {
+        businessId: id,
+        isActive: true,
+        startDate: { lte: new Date() },
+        endDate: { gte: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (activeAd) {
+      await advertisementRepo
+        .update({
+          where: { id: activeAd.id },
+          data: { clicks: { increment: 1 } },
+        })
+        .catch(() => null)
+    }
+
+    return {
+      ...business,
+      isSponsored: Boolean(activeAd),
+      activeAdvertisement: activeAd
+        ? {
+            id: activeAd.id,
+            title: activeAd.title,
+            ctaText: activeAd.ctaText,
+            targetRadius: activeAd.targetRadius,
+          }
+        : null,
+    }
   },
 
   getBusinessByUserId(userId: string) {

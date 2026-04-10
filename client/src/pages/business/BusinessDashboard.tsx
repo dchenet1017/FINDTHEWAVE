@@ -3,23 +3,54 @@ import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Alert } from '@/components/ui/Alert'
 import { MapWidget } from '@/components/map/MapWidget'
-import { useBusinessMap } from '@/hooks/business/useBusinessMap'
 import type { Business } from '../../../../shared/types/business'
-import { ShieldCheck, MapPin, TrendingUp, DollarSign, Users, Star } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import {
+  CalendarClock,
+  DollarSign,
+  Gift,
+  Megaphone,
+  ShieldCheck,
+  Star,
+  Users,
+} from 'lucide-react'
+import { StatCard } from '@/components/business/StatCard'
+import { RevenueChart } from '@/components/business/RevenueChart'
+import { RecentCheckIns } from '@/components/business/RecentCheckIns'
+import { useBusinessLocation, useNearbyCompetitors } from '@/hooks/useBusinessMap'
+import {
+  useBusinessDashboard,
+  useBusinessRevenue,
+  useBusinessStats,
+  useRecentCheckIns,
+} from '@/hooks/useBusinessDashboard'
+import { formatCurrency } from '@/utils/booking'
 
 export default function BusinessDashboard() {
   const navigate = useNavigate()
-  const { myBusiness, competitors } = useBusinessMap()
   const [selected, setSelected] = useState<Business | null>(null)
 
-  const stats = [
-    { title: "Today's Check-ins", value: '24' },
-    { title: 'This Week Revenue', value: '$4,120' },
-    { title: 'Active Promos', value: '3' },
-    { title: 'Rating', value: '4.7' },
-  ]
+  const { data: dashboard } = useBusinessDashboard()
+  const { data: stats, isLoading: statsLoading } = useBusinessStats()
+  const [revPeriod, setRevPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
+  const { data: revenue = [], isLoading: revenueLoading } = useBusinessRevenue(revPeriod)
+  const { data: recentCheckIns = [], isLoading: checkInsLoading } = useRecentCheckIns(5)
+  const { data: myBusiness } = useBusinessLocation()
+  const { data: competitors = [] } = useNearbyCompetitors({
+    type: myBusiness?.type,
+    lat: myBusiness?.latitude,
+    lng: myBusiness?.longitude,
+    radiusMiles: 5,
+  })
+
+  const businessName = dashboard?.business?.name || myBusiness?.name || 'Business'
+  const isVerified = dashboard?.business?.isVerified ?? myBusiness?.isVerified ?? false
+  const todayLabel = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
 
   const center = useMemo(() => {
     const lat = (myBusiness as any)?.latitude ?? (myBusiness as any)?.location?.latitude
@@ -55,112 +86,199 @@ export default function BusinessDashboard() {
   }, [myBusiness, competitors])
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="space-y-6">
+      {/* Welcome */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">
-            {myBusiness?.name || 'Business Dashboard'}
-          </h1>
-          <p className="text-gray-400 mt-1">Monitor performance and the area around you.</p>
+          <h1 className="text-3xl font-bold text-white">Welcome back, {businessName}!</h1>
+          <p className="text-gray-400 mt-1">{todayLabel}</p>
         </div>
-        {myBusiness?.isVerified && (
-          <Badge variant="secondary" className="inline-flex items-center gap-1">
-            <ShieldCheck className="h-4 w-4" /> Verified
-          </Badge>
-        )}
-      </div>
-
-      <div className="grid md:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.title} className="bg-dark-card border-gray-800">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-sm text-gray-300">{s.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-white">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MapWidget
-            size="medium"
-            markers={markers}
-            highlightId={myBusiness?.id}
-            center={center}
-            zoom={14}
-            onMarkerClick={(m) => {
-              const found = competitors.find((c: any) => c.id === m.id) || (m.id === myBusiness?.id ? myBusiness : null)
-              setSelected(found || null)
-            }}
-            onExpand={() => navigate('/business/map')}
-          />
-        </div>
-        <div className="space-y-4">
-          <Card className="bg-dark-card border-gray-800">
-            <CardHeader>
-              <CardTitle className="text-sm text-gray-200">Customer Insights</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-gray-300">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-secondary" />
-                Check-ins today: 24
-              </div>
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-success" />
-                Revenue this week: $4,120
-              </div>
-              <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-warning" />
-                Avg rating: 4.7
-              </div>
-            </CardContent>
-          </Card>
-
-          {selected && (
-            <Card className="bg-dark-card border-primary/40">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-white">{selected.name}</p>
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {(selected as any).city || (selected as any).location?.city || 'Unknown'}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-[11px]">
-                    {selected.type}
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-400 line-clamp-2">
-                  {selected.description || 'No description provided.'}
-                </p>
-              </CardContent>
-            </Card>
+        <div className="flex items-center gap-2">
+          {isVerified ? (
+            <Badge variant="success" className="inline-flex items-center gap-1">
+              <ShieldCheck className="h-4 w-4" /> Verified
+            </Badge>
+          ) : (
+            <Badge variant="warning">Verification pending</Badge>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-dark-card border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-200">Recent Check-ins</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-gray-400">
-            Recent check-ins will appear here.
-          </CardContent>
-        </Card>
-        <Card className="bg-dark-card border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-200">Promotion Performance</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-gray-400">
-            Promotion metrics coming soon.
-          </CardContent>
-        </Card>
+      {!isVerified && (
+        <Alert variant="warning">
+          <div className="space-y-1">
+            <p className="font-semibold">Your business verification is pending.</p>
+            <p className="text-sm text-gray-200/90">
+              Some features (ads & promotions visibility) may be limited until verification is complete.
+            </p>
+          </div>
+        </Alert>
+      )}
+
+      {/* Stats row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          title="Today's Check-ins"
+          value={stats ? stats.todayCheckIns : 0}
+          subtitle="Customers checked in today"
+          trend={stats?.todayCheckInsChangePct}
+          icon={Users}
+          color="blue"
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="This Week Revenue"
+          value={stats ? formatCurrency(stats.thisWeekRevenue) : formatCurrency(0)}
+          subtitle="Revenue from check-ins & promos"
+          trend={stats?.weekRevenueChangePct}
+          icon={DollarSign}
+          color="green"
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Active Promotions"
+          value={stats ? stats.activePromotions : 0}
+          subtitle="Running right now"
+          icon={Gift}
+          color="purple"
+          action={{ label: 'Create New', onClick: () => navigate('/business/promotions') }}
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Average Rating"
+          value={stats ? stats.averageRating.toFixed(1) : '0.0'}
+          subtitle={`${stats?.reviewCount ?? 0} reviews`}
+          icon={Star}
+          color="yellow"
+          isLoading={statsLoading}
+        />
       </div>
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left (2/3) */}
+        <div className="lg:col-span-2 space-y-6 min-w-0">
+          <RevenueChart
+            data={revenue}
+            isLoading={revenueLoading}
+            period={revPeriod}
+            onPeriodChange={setRevPeriod}
+          />
+
+          <Card className="border-gray-800 bg-gray-900/40">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-white">Customer Check-ins</CardTitle>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/business/map')}>
+                View Full Map
+              </Button>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <MapWidget
+                title="Customer Check-ins"
+                size="medium"
+                markers={markers}
+                highlightId={myBusiness?.id}
+                center={center}
+                zoom={14}
+                onMarkerClick={(m) => {
+                  const id = (m as any).id
+                  const found =
+                    competitors.find((c: any) => c.id === id) ||
+                    (id === myBusiness?.id ? myBusiness : null)
+                  setSelected(found || null)
+                }}
+                onExpand={() => navigate('/business/map')}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right (1/3) */}
+        <div className="space-y-6">
+          {/* Quick actions */}
+          <Card className="border-gray-800 bg-gray-900/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-white">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-4">
+              <Button className="w-full" onClick={() => navigate('/business/ads/create')}>
+                <Megaphone className="h-4 w-4 mr-2" />
+                Create Advertisement
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => navigate('/business/promotions')}
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Add Promotion
+              </Button>
+              <Button variant="secondary" className="w-full" onClick={() => navigate('/waveleaders')}>
+                <Users className="h-4 w-4 mr-2" />
+                Invite WaveLeader
+              </Button>
+              <Button variant="secondary" className="w-full" onClick={() => navigate('/business/profile')}>
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Update Hours
+              </Button>
+            </CardContent>
+          </Card>
+
+          <RecentCheckIns items={recentCheckIns} isLoading={checkInsLoading} />
+
+          {/* Performance metrics (optional fields; shown as placeholders until API supports) */}
+          <Card className="border-gray-800 bg-gray-900/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-white">Performance Metrics</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 text-sm text-gray-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Total check-ins</span>
+                <span className="font-semibold text-white">—</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Total customers</span>
+                <span className="font-semibold text-white">—</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Repeat rate</span>
+                <span className="font-semibold text-white">—</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Peak hours</span>
+                <span className="font-semibold text-white">—</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Bottom: Recent Reviews */}
+      <Card className="border-gray-800 bg-gray-900/40">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-semibold text-white">Recent Reviews</CardTitle>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/business/reviews')}>
+            View All Reviews
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-4 text-sm text-gray-500">
+          {stats?.reviewCount ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-dark-bg/30 p-3">
+                <span className="text-gray-400">Average rating</span>
+                <span className="text-white font-semibold">
+                  {stats.averageRating.toFixed(1)} from {stats.reviewCount} reviews
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Detailed business review entries are not stored yet, so this section currently shows the aggregate review summary.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No reviews yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

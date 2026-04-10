@@ -22,6 +22,7 @@ interface MapContainerProps {
   showControls?: boolean
   showUserLocation?: boolean
   interactive?: boolean
+  showStyleSwitcher?: boolean
 }
 
 export function MapContainer({
@@ -35,6 +36,7 @@ export function MapContainer({
   showControls = true,
   showUserLocation = true,
   interactive = true,
+  showStyleSwitcher = true,
 }: MapContainerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapboxMap | null>(null)
@@ -100,7 +102,7 @@ export function MapContainer({
       map.remove()
       mapRef.current = null
     }
-  }, [initialCenter, initialZoom, mapStyle, showControls, showUserLocation, interactive, tokenMissing])
+  }, [initialCenter, initialZoom, mapStyle, showControls, showUserLocation, interactive, tokenMissing, showStyleSwitcher])
 
   // Style switcher handler
   const handleStyleChange = (style: MapStyleKey) => {
@@ -121,22 +123,24 @@ export function MapContainer({
   return (
     <div className={cn('relative h-full w-full rounded-lg overflow-hidden border border-gray-800 bg-dark-card', className)}>
       {/* Style switcher */}
-      <div className="absolute top-3 left-3 z-20 flex gap-2">
-        {(['dark', 'streets', 'satellite'] as MapStyleKey[]).map((styleKey) => (
-          <button
-            key={styleKey}
-            onClick={() => handleStyleChange(styleKey)}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
-              mapStyle === styleKey
-                ? 'bg-primary text-white border-primary'
-                : 'bg-dark-bg/80 text-gray-300 border-gray-700 hover:border-gray-500'
-            )}
-          >
-            {styleKey.charAt(0).toUpperCase() + styleKey.slice(1)}
-          </button>
-        ))}
-      </div>
+      {showStyleSwitcher && (
+        <div className="absolute top-3 left-3 z-20 flex gap-2">
+          {(['dark', 'streets', 'satellite'] as MapStyleKey[]).map((styleKey) => (
+            <button
+              key={styleKey}
+              onClick={() => handleStyleChange(styleKey)}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
+                mapStyle === styleKey
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-dark-bg/80 text-gray-300 border-gray-700 hover:border-gray-500'
+              )}
+            >
+              {styleKey.charAt(0).toUpperCase() + styleKey.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Map container */}
       <div ref={containerRef} className="h-full w-full" />
@@ -148,8 +152,8 @@ export function MapContainer({
         </div>
       )}
 
-      {/* Render children when map instance is ready */}
-      {mapRef.current && children?.(mapRef.current)}
+      {/* Render overlays only after the base style has loaded */}
+      {isLoaded && mapRef.current && children?.(mapRef.current)}
     </div>
   )
 }

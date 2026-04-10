@@ -32,11 +32,21 @@ export const createPromotionSchema = z.object({
 })
 
 export const nearbyQuerySchema = z.object({
-  lat: z.coerce.number(),
-  lng: z.coerce.number(),
-  radius: z.coerce.number().optional().default(5), // miles
+  // Accept both lat/lng and latitude/longitude for compatibility
+  lat: z.coerce.number().optional(),
+  lng: z.coerce.number().optional(),
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
+  radius: z.coerce.number().optional(),
+  radiusMiles: z.coerce.number().optional(), // Accept radiusMiles as well
   types: z.string().optional(), // comma-separated
   limit: z.coerce.number().optional().default(50),
+}).refine((data) => {
+  // At least one of lat/lng or latitude/longitude must be provided
+  return (data.lat !== undefined && data.lng !== undefined) || 
+         (data.latitude !== undefined && data.longitude !== undefined)
+}, {
+  message: "Either lat/lng or latitude/longitude must be provided"
 })
 
 export const mapBoundsSchema = z.object({

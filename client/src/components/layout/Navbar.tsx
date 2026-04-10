@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, LogOut, Map, Menu, User } from 'lucide-react'
+import { Bell, LogOut, Map, Menu, Users, User } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/DropdownMenu'
@@ -14,6 +14,14 @@ export function Navbar({ className }: NavbarProps) {
   const { user, isAuthenticated } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const dashboardPath =
+    user?.role === 'BUSINESS'
+      ? '/business/dashboard'
+      : user?.role === 'WAVELEADER'
+        ? '/waveleader/dashboard'
+        : user?.role === 'ADMIN'
+          ? '/admin'
+          : '/dashboard'
 
   const initials =
     (user?.firstName?.[0] || '') + (user?.lastName?.[0] || user?.email?.[0] || '')
@@ -41,6 +49,14 @@ export function Navbar({ className }: NavbarProps) {
               <Map className="h-4 w-4" />
               Explore Map
             </Link>
+            <Link to="/events" className="text-sm text-gray-300 hover:text-white inline-flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Events
+            </Link>
+            <Link to="/communities" className="text-sm text-gray-300 hover:text-white inline-flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              Communities
+            </Link>
           </nav>
         </div>
 
@@ -64,9 +80,14 @@ export function Navbar({ className }: NavbarProps) {
                 }
                 align="right"
               >
-                <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                <DropdownMenuItem onClick={() => navigate(dashboardPath)}>
                   Dashboard
                 </DropdownMenuItem>
+                {user?.role === 'BUSINESS' && (
+                  <DropdownMenuItem onClick={() => navigate('/business/dashboard')}>
+                    Business Dashboard
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
                   Profile
                 </DropdownMenuItem>

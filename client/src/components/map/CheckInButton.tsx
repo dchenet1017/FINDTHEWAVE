@@ -1,39 +1,42 @@
-import { Button } from '@/components/ui/Button'
-import { toast } from 'sonner'
-import { calculateDistance, formatDistance } from '@/lib/mapbox'
+import { CheckInButton as EnhancedCheckInButton } from '@/components/checkin/CheckInButton'
+import { cn } from '@/lib/utils'
 
 interface CheckInButtonProps {
   business: { id: string; name?: string; latitude?: number | null; longitude?: number | null; location?: { latitude?: number; longitude?: number } }
   userLocation?: { lat: number; lng: number } | null
   radiusMiles?: number
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
 }
 
-export function CheckInButton({ business, userLocation, radiusMiles = 0.25 }: CheckInButtonProps) {
-  const handleCheckIn = () => {
-    const lat = business.latitude ?? business.location?.latitude
-    const lng = business.longitude ?? business.location?.longitude
-    if (lat == null || lng == null || Number.isNaN(Number(lat)) || Number.isNaN(Number(lng))) {
-      toast.error('Location unavailable for this place')
-      return
-    }
-    if (!userLocation) {
-      toast.error('Turn on location to check in')
-      return
-    }
+/**
+ * Wrapper component for the enhanced CheckInButton
+ * Maintains backward compatibility with the old interface
+ */
+export function CheckInButton({
+  business,
+  userLocation,
+  radiusMiles = 0.25,
+  size = 'sm',
+  className,
+}: CheckInButtonProps) {
+  const lat = business.latitude ?? business.location?.latitude
+  const lng = business.longitude ?? business.location?.longitude
 
-    const dist = calculateDistance(userLocation.lat, userLocation.lng, Number(lat), Number(lng))
-    if (dist > radiusMiles) {
-      toast.error(`You are too far away (${formatDistance(dist)}). Move closer to check in.`)
-      return
-    }
-
-    toast.success(`Checked in at ${business.name || 'this place'}! +10 points`)
-  }
+  // Convert miles to meters (1 mile = 1609.34 meters)
+  const radiusMeters = radiusMiles * 1609.34
 
   return (
-    <Button size="sm" variant="default" onClick={handleCheckIn}>
-      Check In
-    </Button>
+    <EnhancedCheckInButton
+      businessId={business.id}
+      businessName={business.name || 'Unknown Business'}
+      businessLatitude={lat ?? undefined}
+      businessLongitude={lng ?? undefined}
+      userLocation={userLocation}
+      variant={size === 'lg' ? 'large' : 'default'}
+      className={cn(className)}
+      radiusMeters={radiusMeters}
+    />
   )
 }
 

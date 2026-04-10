@@ -4,15 +4,18 @@ import { createRoot } from 'react-dom/client'
 import { ShieldCheck, Star, MapPin, Phone, Globe, X, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { FavoriteButton } from './FavoriteButton'
+import { CheckInButton } from './CheckInButton'
 import type { Business } from '../../../../shared/types/business'
 
 interface BusinessPopupProps {
   map: MapboxMap | null
   business: Business | null
   onClose?: () => void
+  userLocation?: { lat: number; lng: number } | null
 }
 
-export function BusinessPopup({ map, business, onClose }: BusinessPopupProps) {
+export function BusinessPopup({ map, business, onClose, userLocation }: BusinessPopupProps) {
   useEffect(() => {
     if (!map || !business) return
 
@@ -31,7 +34,7 @@ export function BusinessPopup({ map, business, onClose }: BusinessPopupProps) {
       onClose?.()
     }
 
-    root.render(<BusinessPopupContent business={business} onClose={handleClose} />)
+    root.render(<BusinessPopupContent business={business} onClose={handleClose} userLocation={userLocation} />)
 
     const lng = Number((business as any).longitude ?? (business as any).location?.longitude ?? NaN)
     const lat = Number((business as any).latitude ?? (business as any).location?.latitude ?? NaN)
@@ -48,9 +51,18 @@ export function BusinessPopup({ map, business, onClose }: BusinessPopupProps) {
   return null
 }
 
-function BusinessPopupContent({ business, onClose }: { business: Business; onClose?: () => void }) {
+function BusinessPopupContent({
+  business,
+  onClose,
+  userLocation,
+}: {
+  business: Business
+  onClose?: () => void
+  userLocation?: { lat: number; lng: number } | null
+}) {
   const hasPromo = (business as any).promotions && (business as any).promotions.length > 0
   const promo = hasPromo ? (business as any).promotions[0] : null
+  const isSponsored = Boolean((business as any).isSponsored || (business as any).activeAdvertisement)
 
   const rating = (business as any).rating
   const distance = (business as any).distance
@@ -95,6 +107,7 @@ function BusinessPopupContent({ business, onClose }: { business: Business; onClo
           <div>
             <div className="flex items-center gap-2">
               <p className="text-lg font-semibold">{business.name}</p>
+              {isSponsored && <Badge variant="warning">Sponsored</Badge>}
               {business.isVerified && <ShieldCheck className="h-4 w-4 text-success" />}
             </div>
             <p className="text-sm text-gray-400 flex items-center gap-1">
@@ -143,7 +156,19 @@ function BusinessPopupContent({ business, onClose }: { business: Business; onClo
         )}
 
         <div className="flex items-center gap-2 pt-1">
-          <Button variant="default" size="sm" className="flex-1">
+          <FavoriteButton businessId={business.id} size="sm" />
+          <CheckInButton business={business} userLocation={userLocation} size="sm" className="flex-1" />
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1"
+            onClick={() => {
+              window.location.href = `/business/${business.id}`
+            }}
+          >
             View Details
           </Button>
           {directionsUrl && (
