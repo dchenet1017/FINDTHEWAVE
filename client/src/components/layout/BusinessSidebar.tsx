@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
   BarChart3,
+  CalendarDays,
   Map as MapIcon,
   Megaphone,
   Gift,

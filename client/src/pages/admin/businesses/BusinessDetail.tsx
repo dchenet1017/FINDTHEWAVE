@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Phone, Globe, Mail, Calendar, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, Building2, MapPin, Phone, Globe, Mail, Calendar, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'

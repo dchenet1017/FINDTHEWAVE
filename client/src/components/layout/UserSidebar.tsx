@@ -5,6 +5,7 @@ import {
   Map as MapIcon,
   Heart,
   Calendar,
+  CalendarClock,
   Ticket,
   Users,
   Gift,
