@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 
 interface ProtectedRouteProps {
@@ -7,6 +8,8 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
+  // Ensures auth state is initialized (verifies token on page refresh)
+  useAuth()
   const { user, isAuthenticated, isLoading } = useAuthStore()
   const location = useLocation()
 

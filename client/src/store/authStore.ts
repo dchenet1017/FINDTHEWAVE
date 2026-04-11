@@ -33,7 +33,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      isLoading: true,
+      // Only show loading if a token exists — otherwise we know the user isn't logged in
+      isLoading: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
 
       setUser: (user) =>
         set({
