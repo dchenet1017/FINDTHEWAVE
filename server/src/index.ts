@@ -24,7 +24,7 @@ const server = Fastify({
 
 // Register plugins
 const allowedOrigins = [
-  config.frontend.url,
+  config.frontend.url.replace(/\/$/, ''), // strip trailing slash
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
@@ -34,7 +34,12 @@ await server.register(cors, {
   origin: (origin, cb) => {
     // allow non-browser / same-origin requests
     if (!origin) return cb(null, true)
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = origin.replace(/\/$/, '')
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return cb(null, true)
+    }
+    // allow any onrender.com subdomain as fallback
+    if (normalizedOrigin.endsWith('.onrender.com')) {
       return cb(null, true)
     }
     return cb(new Error('Origin not allowed'), false)
