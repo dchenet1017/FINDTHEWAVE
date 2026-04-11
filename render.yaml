@@ -1,0 +1,58 @@
+databases:
+  - name: wavefinder-db
+    databaseName: wavefinder
+    user: wavefinder
+    plan: free
+
+services:
+  # Backend API (Fastify)
+  - type: web
+    name: wavefinder-server
+    runtime: node
+    plan: free
+    buildCommand: npm install && cd server && npm run build && npx prisma db push
+    startCommand: cd server && node dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wavefinder-db
+          property: connectionString
+      - key: REDIS_URL
+        sync: false  # Paste your Upstash Redis URL here after setup
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false  # Set after frontend is deployed, e.g. https://wavefinder-client.onrender.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  # Frontend (React + Vite Static Site)
+  - type: web
+    name: wavefinder-client
+    runtime: static
+    buildCommand: npm install && cd client && npm run build
+    staticPublishPath: ./client/dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false  # Set to https://wavefinder-server.onrender.com/api
+      - key: VITE_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_MAPBOX_TOKEN
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
