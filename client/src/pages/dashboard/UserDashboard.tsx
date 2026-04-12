@@ -47,7 +47,8 @@ export default function UserDashboard() {
   )
 
   const markers = useMemo(() => {
-    return nearby.map((b: any) => ({
+    const list = Array.isArray(nearby) ? nearby : []
+    return list.map((b: any) => ({
       id: b.id,
       latitude: b.latitude ?? b.location?.latitude,
       longitude: b.longitude ?? b.location?.longitude,

@@ -50,7 +50,8 @@ export const useNearbyBusinesses = (query: NearbyBusinessQuery, enabled = true) 
     queryKey: ['businesses', 'nearby', query],
     queryFn: async () => {
       const { data } = await businessService.getNearbyBusinesses(query)
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return Array.isArray(unwrapped) ? unwrapped : []
     },
     enabled,
     staleTime: 30 * 1000,
@@ -78,7 +79,8 @@ export const useSearchBusinesses = (
     queryKey: ['businesses', 'search', searchTerm, location],
     queryFn: async () => {
       const { data } = await businessService.searchBusinesses(searchTerm, location)
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return Array.isArray(unwrapped) ? unwrapped : []
     },
     enabled: Boolean(searchTerm?.length >= 2),
     staleTime: 15 * 1000,
