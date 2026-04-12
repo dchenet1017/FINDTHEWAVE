@@ -62,7 +62,8 @@ export const useMapBusinesses = (bounds: MapBounds | null) =>
     queryKey: ['businesses', 'map', bounds],
     queryFn: async () => {
       const { data } = await businessService.getBusinessesForMap(bounds!)
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return Array.isArray(unwrapped) ? unwrapped : []
     },
     enabled: !!bounds,
     staleTime: 30 * 1000,

@@ -19,13 +19,15 @@ export const useAdminMapData = (bounds: MapBounds | null) => {
         adminService.getWaveLeaders ? adminService.getWaveLeaders({ page: 1, limit: 200 }) : Promise.resolve({ data: { waveLeaders: [] } } as any),
       ])
 
-      const businesses: Business[] = Array.isArray(bizRes.data?.items)
-        ? bizRes.data.items
-        : Array.isArray(bizRes.data)
-        ? bizRes.data
-        : (bizRes.data?.businesses as Business[]) || []
+      const rawBiz = (bizRes.data as any)?.data ?? bizRes.data
+      const businesses: Business[] = Array.isArray(rawBiz)
+        ? rawBiz
+        : Array.isArray(rawBiz?.items)
+        ? rawBiz.items
+        : []
 
-      const waveleaders = (waveRes as any)?.data?.waveLeaders || (waveRes as any)?.data || []
+      const rawWave = (waveRes as any)?.data?.data ?? (waveRes as any)?.data
+      const waveleaders = rawWave?.waveLeaders || (Array.isArray(rawWave) ? rawWave : [])
 
       return {
         businesses,
