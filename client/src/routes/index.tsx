@@ -42,6 +42,11 @@ import BusinessDetail from '@/pages/admin/businesses/BusinessDetail'
 import WaveLeaderManagement from '@/pages/admin/waveleaders/WaveLeaderManagement'
 import WaveLeaderDetail from '@/pages/admin/waveleaders/WaveLeaderDetail'
 import AnalyticsOverview from '@/pages/admin/analytics/AnalyticsOverview'
+import RevenueAnalytics from '@/pages/admin/analytics/RevenueAnalytics'
+import EngagementAnalytics from '@/pages/admin/analytics/EngagementAnalytics'
+import ListingsPage from '@/pages/admin/content/ListingsPage'
+import AdminEventsPage from '@/pages/admin/content/AdminEventsPage'
+import PromotionsPage from '@/pages/admin/content/PromotionsPage'
 import AdminSettings from '@/pages/admin/settings/AdminSettings'
 import AdminMapPage from '@/pages/admin/AdminMapPage'
 
@@ -166,7 +171,12 @@ export const router = createBrowserRouter([
           { path: 'businesses/:id', element: <BusinessDetail /> },
           { path: 'waveleaders', element: <WaveLeaderManagement /> },
           { path: 'waveleaders/:id', element: <WaveLeaderDetail /> },
+          { path: 'listings', element: <ListingsPage /> },
+          { path: 'events', element: <AdminEventsPage /> },
+          { path: 'promotions', element: <PromotionsPage /> },
           { path: 'analytics', element: <AnalyticsOverview /> },
+          { path: 'analytics/revenue', element: <RevenueAnalytics /> },
+          { path: 'analytics/engagement', element: <EngagementAnalytics /> },
           { path: 'map', element: <AdminMapPage /> },
           { path: 'settings', element: <AdminSettings /> },
         ],
