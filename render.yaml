@@ -10,6 +10,7 @@ services:
     name: wavefinder-server
     runtime: node
     plan: free
+    autoDeploy: yes
     buildCommand: npm install && cd server && npm run build && npx prisma db push
     startCommand: cd server && npm start
     healthCheckPath: /api/health
@@ -43,6 +44,7 @@ services:
   - type: web
     name: wavefinder-client
     runtime: static
+    autoDeploy: yes
     buildCommand: npm install && cd client && npm run build
     staticPublishPath: ./client/dist
     envVars:
