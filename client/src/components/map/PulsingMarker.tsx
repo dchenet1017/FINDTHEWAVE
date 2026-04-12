@@ -58,8 +58,12 @@ export function PulsingMarker({ map, position, color, size = 18, onClick }: Prop
     el.addEventListener('click', click)
 
     return () => {
-      el.removeEventListener('click', click)
-      marker.remove()
+      try {
+        el.removeEventListener('click', click)
+        marker.remove()
+      } catch {
+        // marker was already removed
+      }
     }
   }, [map, position, el, onClick])
 

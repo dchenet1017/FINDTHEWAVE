@@ -44,6 +44,10 @@ export function MapContainer({
   const [isLoaded, setIsLoaded] = useState(false)
   const tokenMissing = !mapboxgl.accessToken
 
+  // Use refs for initial values so the map isn't recreated when props change
+  const initialCenterRef = useRef(initialCenter)
+  const initialZoomRef = useRef(initialZoom)
+
   // Store callbacks in refs to avoid map recreation on callback changes
   const onMapLoadRef = useRef(onMapLoad)
   const onMoveEndRef = useRef(onMoveEnd)
@@ -62,8 +66,8 @@ export function MapContainer({
       container: containerRef.current,
       accessToken: mapboxgl.accessToken || undefined,
       style: mapStyles[mapStyle],
-      center: initialCenter,
-      zoom: initialZoom,
+      center: initialCenterRef.current,
+      zoom: initialZoomRef.current,
       interactive,
     })
 
@@ -102,7 +106,7 @@ export function MapContainer({
       map.remove()
       mapRef.current = null
     }
-  }, [initialCenter, initialZoom, mapStyle, showControls, showUserLocation, interactive, tokenMissing, showStyleSwitcher])
+  }, [mapStyle, showControls, showUserLocation, interactive, tokenMissing])
 
   // Style switcher handler
   const handleStyleChange = (style: MapStyleKey) => {

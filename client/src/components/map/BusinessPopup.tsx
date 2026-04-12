@@ -43,8 +43,12 @@ export function BusinessPopup({ map, business, onClose, userLocation }: Business
     popup.setDOMContent(container).setLngLat([lng, lat]).addTo(map)
 
     return () => {
-      popup.remove()
-      root.unmount()
+      try {
+        popup.remove()
+        root.unmount()
+      } catch {
+        // popup was already removed
+      }
     }
   }, [map, business, onClose])
 

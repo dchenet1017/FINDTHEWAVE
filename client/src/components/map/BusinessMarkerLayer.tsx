@@ -41,9 +41,10 @@ export function BusinessMarkerLayer({ map, businesses, selectedId, onBusinessCli
       return { lat: lat !== null ? Number(lat) : undefined, lng: lng !== null ? Number(lng) : undefined }
     }
 
+    const list = Array.isArray(businesses) ? businesses : []
     return {
       type: 'FeatureCollection',
-      features: businesses
+      features: list
         .map((b) => {
           const { lat, lng } = getCoords(b)
           if (lat === undefined || lng === undefined || Number.isNaN(lat) || Number.isNaN(lng)) return null
@@ -183,11 +184,15 @@ export function BusinessMarkerLayer({ map, businesses, selectedId, onBusinessCli
     }
 
     return () => {
-      if (!map) return
-      if (safeHasLayer(map, CLUSTER_LAYER_ID)) map.removeLayer(CLUSTER_LAYER_ID)
-      if (safeHasLayer(map, CLUSTER_COUNT_ID)) map.removeLayer(CLUSTER_COUNT_ID)
-      if (safeHasLayer(map, UNCLUSTERED_LAYER_ID)) map.removeLayer(UNCLUSTERED_LAYER_ID)
-      if (safeHasSource(map, SOURCE_ID)) map.removeSource(SOURCE_ID)
+      try {
+        if (!map) return
+        if (safeHasLayer(map, CLUSTER_LAYER_ID)) map.removeLayer(CLUSTER_LAYER_ID)
+        if (safeHasLayer(map, CLUSTER_COUNT_ID)) map.removeLayer(CLUSTER_COUNT_ID)
+        if (safeHasLayer(map, UNCLUSTERED_LAYER_ID)) map.removeLayer(UNCLUSTERED_LAYER_ID)
+        if (safeHasSource(map, SOURCE_ID)) map.removeSource(SOURCE_ID)
+      } catch {
+        // map was already destroyed during navigation
+      }
     }
   }, [map, geojson])
 

@@ -156,16 +156,20 @@ export function EventMapMarkers({ map, events, onEventClick }: EventMapMarkersPr
     map.on('mouseleave', POINT_LAYER, cursorDefault)
 
     return () => {
-      map.off('click', CLUSTER_LAYER, onClusterClick)
-      map.off('click', POINT_LAYER, onPointClick)
-      map.off('mouseenter', CLUSTER_LAYER, cursorPointer)
-      map.off('mouseleave', CLUSTER_LAYER, cursorDefault)
-      map.off('mouseenter', POINT_LAYER, cursorPointer)
-      map.off('mouseleave', POINT_LAYER, cursorDefault)
-      if (map.getLayer(COUNT_LAYER)) map.removeLayer(COUNT_LAYER)
-      if (map.getLayer(POINT_LAYER)) map.removeLayer(POINT_LAYER)
-      if (map.getLayer(CLUSTER_LAYER)) map.removeLayer(CLUSTER_LAYER)
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      try {
+        map.off('click', CLUSTER_LAYER, onClusterClick)
+        map.off('click', POINT_LAYER, onPointClick)
+        map.off('mouseenter', CLUSTER_LAYER, cursorPointer)
+        map.off('mouseleave', CLUSTER_LAYER, cursorDefault)
+        map.off('mouseenter', POINT_LAYER, cursorPointer)
+        map.off('mouseleave', POINT_LAYER, cursorDefault)
+        if (map.getLayer(COUNT_LAYER)) map.removeLayer(COUNT_LAYER)
+        if (map.getLayer(POINT_LAYER)) map.removeLayer(POINT_LAYER)
+        if (map.getLayer(CLUSTER_LAYER)) map.removeLayer(CLUSTER_LAYER)
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      } catch {
+        // map was already destroyed during navigation
+      }
     }
   }, [map])
 

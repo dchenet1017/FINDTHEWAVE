@@ -67,10 +67,14 @@ export function AdCoverageZone({ map, center, radiusMiles, visible }: Props) {
     else map.once('load', add)
 
     return () => {
-      if (!map) return
-      if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID)
-      if (map.getLayer(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID)
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      try {
+        if (!map) return
+        if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID)
+        if (map.getLayer(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID)
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      } catch {
+        // map was already destroyed during navigation
+      }
     }
   }, [map])
 

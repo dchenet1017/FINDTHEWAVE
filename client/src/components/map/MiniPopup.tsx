@@ -54,8 +54,12 @@ export function MiniPopup({ map, marker, onClose, onViewDetails }: MiniPopupProp
     popup.setDOMContent(container).setLngLat([marker.longitude, marker.latitude]).addTo(map)
 
     return () => {
-      popup.remove()
-      root.unmount()
+      try {
+        popup.remove()
+        root.unmount()
+      } catch {
+        // popup was already removed
+      }
     }
   }, [map, marker, onClose, onViewDetails])
 

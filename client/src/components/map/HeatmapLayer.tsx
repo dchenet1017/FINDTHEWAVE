@@ -64,9 +64,13 @@ export function HeatmapLayer({
       })
     }
     return () => {
-      if (!map) return
-      if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID)
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      try {
+        if (!map) return
+        if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID)
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      } catch {
+        // map was already destroyed during navigation
+      }
     }
   }, [map])
 

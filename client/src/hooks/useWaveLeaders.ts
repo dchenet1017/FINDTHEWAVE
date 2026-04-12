@@ -70,7 +70,8 @@ export function useWaveLeaders(filters: WaveLeaderFilters) {
         '/waveleader',
         { params }
       )
-      return data.success ? data.data : data
+      const result = data.success ? data.data : data
+      return result ?? { waveLeaders: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }
     },
   })
 }
@@ -88,7 +89,8 @@ export function useNearbyWaveLeaders(
         '/waveleader/nearby',
         { params: { lat, lng, radius: radiusMiles, limit: 50 } }
       )
-      return data.success ? data.data : data
+      const result = data.success ? data.data : data
+      return Array.isArray(result) ? result : []
     },
     enabled: !!lat && !!lng && radiusMiles > 0 && enabled,
   })

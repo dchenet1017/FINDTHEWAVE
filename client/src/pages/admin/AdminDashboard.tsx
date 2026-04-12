@@ -20,7 +20,8 @@ export default function AdminDashboard() {
     queryKey: ['admin', 'map', 'businesses'],
     queryFn: async () => {
       const res = await businessService.getBusinesses({ limit: 200, page: 1 })
-      return Array.isArray(res.data?.items) ? res.data.items : []
+      const payload = (res.data as any)?.data ?? res.data
+      return Array.isArray(payload?.items) ? payload.items : []
     },
     staleTime: 60 * 1000,
   })

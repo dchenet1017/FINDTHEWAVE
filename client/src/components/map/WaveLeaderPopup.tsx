@@ -41,8 +41,12 @@ export function WaveLeaderPopup({ map, waveLeader, onClose }: WaveLeaderPopupPro
     popup.setDOMContent(container).setLngLat([lng, lat]).addTo(map)
 
     return () => {
-      popup.remove()
-      root.unmount()
+      try {
+        popup.remove()
+        root.unmount()
+      } catch {
+        // popup was already removed
+      }
     }
   }, [map, waveLeader, onClose])
 

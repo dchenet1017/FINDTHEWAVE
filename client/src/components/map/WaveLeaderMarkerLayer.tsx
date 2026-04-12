@@ -25,9 +25,10 @@ const POINT_LAYER_ID = 'waveleaders-points'
 
 export function WaveLeaderMarkerLayer({ map, waveLeaders, selectedId, onClick }: Props) {
   const geojson = useMemo(() => {
+    const list = Array.isArray(waveLeaders) ? waveLeaders : []
     return {
       type: 'FeatureCollection',
-      features: waveLeaders
+      features: list
         .map((w) => {
           const lat = (w as any).latitude
           const lng = (w as any).longitude
@@ -86,9 +87,13 @@ export function WaveLeaderMarkerLayer({ map, waveLeaders, selectedId, onClick }:
     }
 
     return () => {
-      if (!map) return
-      if (map.getLayer(POINT_LAYER_ID)) map.removeLayer(POINT_LAYER_ID)
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      try {
+        if (!map) return
+        if (map.getLayer(POINT_LAYER_ID)) map.removeLayer(POINT_LAYER_ID)
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+      } catch {
+        // map was already destroyed during navigation
+      }
     }
   }, [map])
 
