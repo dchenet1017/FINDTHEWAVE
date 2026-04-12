@@ -54,7 +54,8 @@ export const useBusinessesInArea = (
           longitude: center[0],
           radiusMiles: radius,
         })
-        const data = res.data as any
+        const raw = res.data as any
+        const data = raw?.data ?? raw
         if (Array.isArray(data)) return data as Business[]
         if (Array.isArray(data?.items)) return data.items as Business[]
         if (Array.isArray(data?.businesses)) return data.businesses as Business[]
@@ -64,7 +65,8 @@ export const useBusinessesInArea = (
           page: 1,
           limit: 200,
         })
-        const data = res.data as any
+        const raw = res.data as any
+        const data = raw?.data ?? raw
         if (Array.isArray(data)) return data as Business[]
         if (Array.isArray(data?.items)) return data.items as Business[]
         return []

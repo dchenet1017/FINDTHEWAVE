@@ -5,6 +5,8 @@ import { Checkbox } from '@/components/ui/Checkbox'
 import { Badge } from '@/components/ui/Badge'
 import { MapContainer } from '@/components/map/MapContainer'
 import { BusinessMarkerLayer } from '@/components/map/BusinessMarkerLayer'
+import { WaveLeaderMarkerLayer } from '@/components/map/WaveLeaderMarkerLayer'
+import { EventMarkerLayer } from '@/components/map/EventMarkerLayer'
 import { useAdminMapData } from '@/hooks/admin/useAdminMap'
 import type { MapBounds } from '@/services/business.service'
 import type { Business } from '../../../../shared/types/business'
@@ -26,6 +28,8 @@ export default function AdminMapPage() {
 
   const { data } = useAdminMapData(bounds)
   const businesses = data?.businesses || []
+  const waveleaders = data?.waveleaders || []
+  const events = data?.events || []
 
   const filteredBusinesses = useMemo(() => {
     return businesses.filter((b: any) => {
@@ -136,16 +140,30 @@ export default function AdminMapPage() {
                 showControls
                 showUserLocation={false}
               >
-                {(map) =>
-                  map && layers.businesses && (
-                    <BusinessMarkerLayer
-                      map={map}
-                      businesses={filteredBusinesses}
-                      selectedId={selectedBusiness?.id}
-                      onBusinessClick={(biz) => setSelectedBusiness(biz as any)}
-                    />
-                  )
-                }
+                {(map) => map && (
+                  <>
+                    {layers.businesses && (
+                      <BusinessMarkerLayer
+                        map={map}
+                        businesses={filteredBusinesses}
+                        selectedId={selectedBusiness?.id}
+                        onBusinessClick={(biz) => setSelectedBusiness(biz as any)}
+                      />
+                    )}
+                    {layers.waveleaders && (
+                      <WaveLeaderMarkerLayer
+                        map={map}
+                        waveLeaders={waveleaders}
+                      />
+                    )}
+                    {layers.events && (
+                      <EventMarkerLayer
+                        map={map}
+                        events={events}
+                      />
+                    )}
+                  </>
+                )}
               </MapContainer>
             </div>
           </CardContent>
