@@ -27,7 +27,8 @@ export const useBusinesses = (filters: BusinessFilters) =>
     queryKey: ['businesses', filters],
     queryFn: async () => {
       const { data } = await businessService.getBusinesses(filters)
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return unwrapped
     },
     keepPreviousData: true,
     staleTime: 30 * 1000,
@@ -39,7 +40,8 @@ export const useBusiness = (id?: string) =>
     queryKey: ['business', id],
     queryFn: async () => {
       const { data } = await businessService.getBusiness(id!)
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return unwrapped
     },
     enabled: !!id,
     onError: (error) => handleError(error, 'Failed to load business'),
@@ -131,7 +133,8 @@ export const useBusinessTypeCounts = () =>
     queryKey: ['businesses', 'type-counts'],
     queryFn: async () => {
       const { data } = await businessService.getBusinessTypeCounts()
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return Array.isArray(unwrapped) ? unwrapped : []
     },
     staleTime: 5 * 60 * 1000,
     onError: (error) => handleError(error, 'Failed to load type counts'),

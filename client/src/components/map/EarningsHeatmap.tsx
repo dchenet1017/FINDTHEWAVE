@@ -26,9 +26,10 @@ export function EarningsHeatmap({
   const LAYER_ID = 'earnings-heatmap-layer'
 
   const geojson = useMemo(() => {
+    const list = Array.isArray(points) ? points : []
     return {
       type: 'FeatureCollection' as const,
-      features: points.map((p, idx) => ({
+      features: list.map((p, idx) => ({
         type: 'Feature' as const,
         id: idx,
         properties: { weight: p.weight ?? 1 },

@@ -104,7 +104,8 @@ export function useSearchWaveLeaders(searchTerm: string, enabled = true) {
         '/waveleader/search',
         { params: { q: searchTerm, limit: 20 } }
       )
-      return data.success ? data.data : data
+      const result = data.success ? data.data : []
+      return Array.isArray(result) ? result : []
     },
     enabled: searchTerm.trim().length >= 2 && enabled,
   })

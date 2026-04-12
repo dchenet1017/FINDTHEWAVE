@@ -28,9 +28,10 @@ export function HeatmapLayer({
   const LAYER_ID = `${id}-layer`
 
   const geojson = useMemo(() => {
+    const list = Array.isArray(points) ? points : []
     return {
       type: 'FeatureCollection',
-      features: points.map((p, idx) => ({
+      features: list.map((p, idx) => ({
         type: 'Feature',
         id: idx,
         properties: { weight: p.weight ?? 1 },

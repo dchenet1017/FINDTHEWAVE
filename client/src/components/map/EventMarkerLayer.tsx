@@ -22,9 +22,10 @@ const LAYER_ID = 'events-points'
 
 export function EventMarkerLayer({ map, events, onClick }: Props) {
   const geojson = useMemo(() => {
+    const list = Array.isArray(events) ? events : []
     return {
       type: 'FeatureCollection',
-      features: events
+      features: list
         .map((ev) => ({
           type: 'Feature',
           id: ev.id,

@@ -46,7 +46,8 @@ export const useWaveLeaderReviews = (waveLeaderId: string, params?: ReviewsQuery
     queryKey: ['waveleader', waveLeaderId, 'reviews', params],
     queryFn: async () => {
       const { data } = await api.get('/waveleaders/' + waveLeaderId + '/reviews', { params })
-      return data
+      const unwrapped = (data as any)?.data ?? data
+      return Array.isArray(unwrapped) ? unwrapped : (unwrapped ?? [])
     },
     enabled: !!waveLeaderId,
   })
@@ -57,7 +58,7 @@ export const useReviewStats = (waveLeaderId: string) => {
     queryKey: ['waveleader', waveLeaderId, 'review-stats'],
     queryFn: async () => {
       const { data } = await api.get('/waveleaders/' + waveLeaderId + '/review-stats')
-      return data
+      return (data as any)?.data ?? data
     },
     enabled: !!waveLeaderId,
   })
