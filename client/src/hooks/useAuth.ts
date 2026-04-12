@@ -27,9 +27,11 @@ export const useAuth = () => {
           setUser(data.data.user)
           return data.data.user
         }
+        console.warn('[useAuth] getCurrentUser returned success:false', data)
         clearAuth()
         return null
-      } catch (error) {
+      } catch (error: any) {
+        console.error('[useAuth] getCurrentUser error', error?.response?.status, error?.response?.data)
         clearAuth()
         return null
       }
@@ -74,6 +76,7 @@ export const useAuth = () => {
       }
     },
     onError: (error: any) => {
+      console.error('[useAuth] login error', error?.response?.status, error?.response?.data)
       const message =
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
