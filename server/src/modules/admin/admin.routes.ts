@@ -4,6 +4,7 @@ import * as userController from './users/user.controller'
 import * as businessController from './businesses/business.controller'
 import * as waveLeaderController from './waveleaders/waveleader.controller'
 import * as analyticsController from './analytics/analytics.controller'
+import * as adminCrawlsController from './crawls/admin-crawls.controller'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
   // Apply auth middleware to all admin routes
@@ -42,5 +43,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/analytics/overview', analyticsController.getOverview)
   fastify.get('/analytics/users', analyticsController.getUserAnalytics)
   fastify.get('/analytics/revenue', analyticsController.getRevenueAnalytics)
+
+  // Crawl management routes
+  fastify.get('/crawls', adminCrawlsController.getCrawls)
+  fastify.post('/crawls', adminCrawlsController.createCrawl)
+  fastify.get('/crawls/:id', adminCrawlsController.getCrawl)
+  fastify.patch('/crawls/:id', adminCrawlsController.updateCrawl)
+  fastify.post('/crawls/:id/publish', adminCrawlsController.publishCrawl)
+  fastify.post('/crawls/:id/cancel', adminCrawlsController.cancelCrawl)
+  fastify.delete('/crawls/:id', adminCrawlsController.deleteCrawl)
 }
 

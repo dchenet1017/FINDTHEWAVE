@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { CheckInButton } from '@/components/map/CheckInButton'
+import { GoOutButton } from '@/components/dashboard/GoOutButton'
 import { useUserStats } from '@/hooks/useUserDashboard'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 import type { Business } from '../../../../shared/types/business'
@@ -89,7 +90,8 @@ export default function UserDashboard() {
           <h1 className="text-3xl font-bold text-white">Welcome back, {firstName}!</h1>
           <p className="text-gray-400 mt-1">{currentDate}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <GoOutButton />
           <Button onClick={() => navigate('/dashboard/map')}>
             <MapIcon className="h-4 w-4 mr-2" />
             Explore Map

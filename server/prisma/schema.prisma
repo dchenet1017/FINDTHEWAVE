@@ -57,45 +57,50 @@ enum AdStatus {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  password        String
-  firstName       String?
-  lastName        String?
-  avatar          String?
-  phone           String?
-  role            Role      @default(USER)
-  isVerified      Boolean   @default(false)
-  isActive        Boolean   @default(true)
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  avatar            String?
+  phone             String?
+  role              Role      @default(USER)
+  isVerified        Boolean   @default(false)
+  isActive          Boolean   @default(true)
   verificationToken String?
-  resetToken      String?
-  resetTokenExpiry DateTime?
-  lastLogin       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  lastLogin         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
   // Relations
-  waveLeader      WaveLeader?
-  business        Business?
-  bookings        Booking[]
-  checkIns        CheckIn[]
+  waveLeader           WaveLeader?
+  business             Business?
+  bookings             Booking[]
+  checkIns             CheckIn[]
   communityMemberships CommunityMembership[]
-  rewards         UserReward?
-  notifications   Notification[]
-  refreshTokens   RefreshToken[]
-  favorites       Favorite[]
-  eventAttendances EventAttendee[]
-  eventCheckIns    EventCheckIn[]
+  rewards              UserReward?
+  notifications        Notification[]
+  refreshTokens        RefreshToken[]
+  favorites            Favorite[]
+  eventAttendances     EventAttendee[]
+  eventCheckIns        EventCheckIn[]
+  createdCrawls        Crawl[]
+  crawlAttendances     CrawlAttendee[]
+  crawlStopCheckIns    CrawlStopCheckIn[]
+  goOutStatus          GoOutStatus?
+  invitesReceived      BusinessInvite[]
 }
 
 model RefreshToken {
-  id          String   @id @default(cuid())
-  token       String   @unique
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([token])
 }
@@ -120,58 +125,61 @@ model WaveLeader {
   longitude       Decimal? @db.Decimal(11, 8)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
-  bookings        Booking[]
+
+  bookings             Booking[]
   communityAssignments CommunityWaveLeader[]
-  featuredEvents  Event[]
+  featuredEvents       Event[]
 }
 
 model Business {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  description     String   @db.Text
-  type            BusinessType
-  address         String
-  city            String
-  state           String
-  zipCode         String
-  latitude        Decimal  @db.Decimal(10, 8)
-  longitude       Decimal  @db.Decimal(11, 8)
-  phone           String?
-  website         String?
-  images          String[]
-  rating          Decimal  @default(0) @db.Decimal(3, 2)
-  totalReviews    Int      @default(0)
-  isVerified      Boolean  @default(false)
-  isActive        Boolean  @default(true)
-  approvalStatus  ApprovalStatus @default(PENDING)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  promotions      Promotion[]
-  advertisements  Advertisement[]
-  events          Event[]
-  checkIns        CheckIn[]
-  partnerships    Partnership[] @relation("BusinessPartnership")
-  partnerOf       Partnership[] @relation("PartnerBusiness")
-  favoritedBy     Favorite[]
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  description    String         @db.Text
+  type           BusinessType
+  address        String
+  city           String
+  state          String
+  zipCode        String
+  latitude       Decimal        @db.Decimal(10, 8)
+  longitude      Decimal        @db.Decimal(11, 8)
+  phone          String?
+  website        String?
+  images         String[]
+  rating         Decimal        @default(0) @db.Decimal(3, 2)
+  totalReviews   Int            @default(0)
+  isVerified     Boolean        @default(false)
+  isActive       Boolean        @default(true)
+  approvalStatus ApprovalStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  promotions     Promotion[]
+  advertisements Advertisement[]
+  events         Event[]
+  checkIns       CheckIn[]
+  partnerships   Partnership[]    @relation("BusinessPartnership")
+  partnerOf      Partnership[]    @relation("PartnerBusiness")
+  favoritedBy    Favorite[]
+  hostedCrawls   Crawl[]          @relation("CrawlHost")
+  crawlStops     CrawlStop[]      @relation("CrawlStopBusiness")
+  invitesSent    BusinessInvite[]
 }
 
 model Community {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  description     String   @db.Text
-  icon            String
-  color           String
-  totalMembers    Int      @default(0)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  members         CommunityMembership[]
-  waveLeaders     CommunityWaveLeader[]
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String   @db.Text
+  icon         String
+  color        String
+  totalMembers Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members     CommunityMembership[]
+  waveLeaders CommunityWaveLeader[]
 }
 
 model CommunityMembership {
@@ -180,63 +188,63 @@ model CommunityMembership {
   communityId String
   isAvailable Boolean  @default(false)
   joinedAt    DateTime @default(now())
-  
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
   @@unique([userId, communityId])
 }
 
 model CommunityWaveLeader {
-  id            String   @id @default(cuid())
-  waveLeaderId  String
-  communityId   String
-  assignedAt    DateTime @default(now())
-  
-  waveLeader    WaveLeader @relation(fields: [waveLeaderId], references: [id], onDelete: Cascade)
-  community     Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  
+  id           String   @id @default(cuid())
+  waveLeaderId String
+  communityId  String
+  assignedAt   DateTime @default(now())
+
+  waveLeader WaveLeader @relation(fields: [waveLeaderId], references: [id], onDelete: Cascade)
+  community  Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
   @@unique([waveLeaderId, communityId])
 }
 
 model Booking {
-  id              String        @id @default(cuid())
-  userId          String
-  waveLeaderId    String
+  id           String @id @default(cuid())
+  userId       String
+  waveLeaderId String
 
-  scheduledDate   DateTime
-  scheduledTime   String // "HH:MM"
-  duration        Int // hours
-  serviceType     String?
-  location        String
-  notes           String?       @db.Text
+  scheduledDate DateTime
+  scheduledTime String // "HH:MM"
+  duration      Int // hours
+  serviceType   String?
+  location      String
+  notes         String?  @db.Text
 
-  totalAmount     Decimal       @db.Decimal(10, 2)
-  serviceFee      Decimal       @db.Decimal(10, 2)
-  paymentIntentId String?       @unique
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  serviceFee      Decimal   @db.Decimal(10, 2)
+  paymentIntentId String?   @unique
   paidAt          DateTime?
-  refundAmount    Decimal?      @db.Decimal(10, 2)
+  refundAmount    Decimal?  @db.Decimal(10, 2)
 
-  status          BookingStatus @default(PENDING)
+  status BookingStatus @default(PENDING)
 
-  confirmedAt     DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
-  cancelReason    String?
-  actualDuration  Decimal?      @db.Decimal(5, 2)
+  confirmedAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  actualDuration Decimal?  @db.Decimal(5, 2)
 
   rating          Int?
-  review          String?       @db.Text
+  review          String?   @db.Text
   reviewTags      String[]
-  reviewAnonymous Boolean       @default(false)
+  reviewAnonymous Boolean   @default(false)
   reviewedAt      DateTime?
 
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  waveLeader      WaveLeader    @relation(fields: [waveLeaderId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  waveLeader WaveLeader @relation(fields: [waveLeaderId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([waveLeaderId])
@@ -245,15 +253,15 @@ model Booking {
 }
 
 model CheckIn {
-  id          String   @id @default(cuid())
-  userId      String
-  businessId  String
-  method      CheckInMethod
-  points      Int      @default(10)
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id])
-  business    Business @relation(fields: [businessId], references: [id])
+  id         String        @id @default(cuid())
+  userId     String
+  businessId String
+  method     CheckInMethod
+  points     Int           @default(10)
+  createdAt  DateTime      @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  business Business @relation(fields: [businessId], references: [id])
 }
 
 model Favorite {
@@ -261,27 +269,27 @@ model Favorite {
   userId     String
   businessId String
   createdAt  DateTime @default(now())
-  
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
   @@unique([userId, businessId])
   @@index([userId])
   @@index([businessId])
 }
 
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String
-  title       String
-  message     String   @db.Text
-  data        Json?
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String   @db.Text
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, isRead])
 }
 
@@ -293,8 +301,8 @@ model UserReward {
   totalSpent  Int      @default(0)
   level       Int      @default(1)
   updatedAt   DateTime @updatedAt
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Promotion {
@@ -307,51 +315,52 @@ model Promotion {
   endDate     DateTime
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  business Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invites  BusinessInvite[]
 }
 
 model Advertisement {
-  id                  String    @id @default(cuid())
-  businessId          String
-  
+  id         String @id @default(cuid())
+  businessId String
+
   // Ad content
-  title               String
-  description         String   @db.Text
-  imageUrl            String?
-  ctaText             String   @default("Learn More")
-  
+  title       String
+  description String  @db.Text
+  imageUrl    String?
+  ctaText     String  @default("Learn More")
+
   // Targeting
-  targetRadius        Int       @default(10) // miles
-  targetDemographics  Json?
-  peakHoursOnly       Boolean   @default(false)
-  specificHours       Json?
-  daysOfWeek          Int[]     @default([0,1,2,3,4,5,6])
-  
+  targetRadius       Int     @default(10) // miles
+  targetDemographics Json?
+  peakHoursOnly      Boolean @default(false)
+  specificHours      Json?
+  daysOfWeek         Int[]   @default([0, 1, 2, 3, 4, 5, 6])
+
   // Budget & Pricing
-  dailyBudget         Decimal   @db.Decimal(10, 2)
-  totalBudget         Decimal   @db.Decimal(10, 2)
-  spent               Decimal   @default(0) @db.Decimal(10, 2)
-  
+  dailyBudget Decimal @db.Decimal(10, 2)
+  totalBudget Decimal @db.Decimal(10, 2)
+  spent       Decimal @default(0) @db.Decimal(10, 2)
+
   // Schedule
-  startDate           DateTime
-  endDate             DateTime
-  
+  startDate DateTime
+  endDate   DateTime
+
   // Status
-  status              AdStatus  @default(SCHEDULED)
-  isActive            Boolean   @default(true)
-  
+  status   AdStatus @default(SCHEDULED)
+  isActive Boolean  @default(true)
+
   // Analytics
-  impressions         Int       @default(0)
-  clicks              Int       @default(0)
-  conversions         Int       @default(0)
-  
+  impressions Int @default(0)
+  clicks      Int @default(0)
+  conversions Int @default(0)
+
   // Relations
-  business            Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([businessId])
   @@index([status])
   @@index([startDate])
@@ -388,65 +397,65 @@ enum AttendeeStatus {
 }
 
 model Event {
-  id                String        @id @default(cuid())
-  businessId        String
+  id         String @id @default(cuid())
+  businessId String
 
   // Event Details
-  title             String
-  description       String        @db.Text
-  imageUrl          String?
-  category          EventCategory
-  tags              String[]      @default([])
-  highlights        String[]      @default([])
-  whatsIncluded     String[]      @default([])
-  whatToBring       String[]      @default([])
-  specialInstructions String?     @db.Text
-  ageRestrictions   String?
-  accessibilityInfo String?       @db.Text
-  scheduledPublishAt DateTime?
+  title               String
+  description         String        @db.Text
+  imageUrl            String?
+  category            EventCategory
+  tags                String[]      @default([])
+  highlights          String[]      @default([])
+  whatsIncluded       String[]      @default([])
+  whatToBring         String[]      @default([])
+  specialInstructions String?       @db.Text
+  ageRestrictions     String?
+  accessibilityInfo   String?       @db.Text
+  scheduledPublishAt  DateTime?
 
   // Location
-  venueName         String?
-  address           String?
-  latitude          Float
-  longitude         Float
-  isVirtual         Boolean       @default(false)
-  virtualLink       String?
+  venueName   String?
+  address     String?
+  latitude    Float
+  longitude   Float
+  isVirtual   Boolean @default(false)
+  virtualLink String?
 
   // Date & Time
-  startDate         DateTime
-  endDate           DateTime
-  timezone          String        @default("America/New_York")
+  startDate DateTime
+  endDate   DateTime
+  timezone  String   @default("America/New_York")
 
   // Registration
-  requiresRegistration Boolean    @default(true)
-  maxAttendees      Int?
-  currentAttendees  Int           @default(0)
+  requiresRegistration Boolean   @default(true)
+  maxAttendees         Int?
+  currentAttendees     Int       @default(0)
   registrationDeadline DateTime?
-  ticketPrice       Decimal?      @db.Decimal(10, 2)
+  ticketPrice          Decimal?  @db.Decimal(10, 2)
 
   // WaveLeader
   featuredWaveLeaderId String?
-  waveLeaderRate    Decimal?      @db.Decimal(10, 2)
+  waveLeaderRate       Decimal? @db.Decimal(10, 2)
 
   // Status
-  status            EventStatus   @default(DRAFT)
-  isPublished       Boolean       @default(false)
-  isFeatured        Boolean       @default(false)
+  status      EventStatus @default(DRAFT)
+  isPublished Boolean     @default(false)
+  isFeatured  Boolean     @default(false)
 
   // Analytics
-  views             Int           @default(0)
-  registrations     Int           @default(0)
-  checkIns          Int           @default(0)
+  views         Int @default(0)
+  registrations Int @default(0)
+  checkIns      Int @default(0)
 
   // Relations
-  business          Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  featuredWaveLeader WaveLeader?  @relation(fields: [featuredWaveLeaderId], references: [id], onDelete: SetNull)
-  attendees         EventAttendee[]
-  checkInRecords    EventCheckIn[]
+  business           Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  featuredWaveLeader WaveLeader?     @relation(fields: [featuredWaveLeaderId], references: [id], onDelete: SetNull)
+  attendees          EventAttendee[]
+  checkInRecords     EventCheckIn[]
 
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([businessId])
   @@index([startDate])
@@ -457,9 +466,9 @@ model Event {
 }
 
 model EventAttendee {
-  id               String         @id @default(cuid())
-  eventId          String
-  userId           String
+  id      String @id @default(cuid())
+  eventId String
+  userId  String
 
   registeredAt     DateTime       @default(now())
   status           AttendeeStatus @default(REGISTERED)
@@ -467,15 +476,15 @@ model EventAttendee {
   totalPaid        Decimal?       @db.Decimal(10, 2)
   paymentIntentId  String?
 
-  checkedIn        Boolean        @default(false)
-  checkedInAt      DateTime?
+  checkedIn   Boolean   @default(false)
+  checkedInAt DateTime?
 
-  event            Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  checkIns         EventCheckIn[]
+  event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns EventCheckIn[]
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -484,23 +493,23 @@ model EventAttendee {
 }
 
 model EventCheckIn {
-  id            String        @id @default(cuid())
-  eventId       String
-  userId        String
-  attendeeId    String
+  id         String @id @default(cuid())
+  eventId    String
+  userId     String
+  attendeeId String
 
-  checkedInAt   DateTime      @default(now())
-  checkInMethod String        @default("QR_CODE")
+  checkedInAt   DateTime @default(now())
+  checkInMethod String   @default("QR_CODE")
   latitude      Float?
   longitude     Float?
 
-  pointsEarned  Int           @default(0)
+  pointsEarned Int @default(0)
 
-  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendee      EventAttendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendee EventAttendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime      @default(now())
+  createdAt DateTime @default(now())
 
   @@index([eventId])
   @@index([userId])
@@ -508,16 +517,167 @@ model EventCheckIn {
 }
 
 model Partnership {
-  id              String   @id @default(cuid())
-  businessId      String
-  partnerId       String
-  offerDescription String  @db.Text
-  partnerOffer    String   @db.Text
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  
-  business        Business @relation("BusinessPartnership", fields: [businessId], references: [id])
-  partner         Business @relation("PartnerBusiness", fields: [partnerId], references: [id])
-  
+  id               String   @id @default(cuid())
+  businessId       String
+  partnerId        String
+  offerDescription String   @db.Text
+  partnerOffer     String   @db.Text
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  business Business @relation("BusinessPartnership", fields: [businessId], references: [id])
+  partner  Business @relation("PartnerBusiness", fields: [partnerId], references: [id])
+
   @@unique([businessId, partnerId])
+}
+
+enum CrawlStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum CrawlAttendeeStatus {
+  REGISTERED
+  CANCELLED
+  COMPLETED
+}
+
+model Crawl {
+  id String @id @default(cuid())
+
+  // Exactly one of these is set, depending on who created the crawl
+  hostBusinessId  String?
+  createdByUserId String?
+
+  title       String
+  description String  @db.Text
+  imageUrl    String?
+
+  startDate DateTime
+  endDate   DateTime
+
+  status      CrawlStatus @default(DRAFT)
+  isPublished Boolean     @default(false)
+
+  maxAttendees     Int?
+  currentAttendees Int  @default(0)
+  bonusPoints      Int  @default(50)
+
+  hostBusiness  Business?       @relation("CrawlHost", fields: [hostBusinessId], references: [id], onDelete: SetNull)
+  createdByUser User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  stops         CrawlStop[]
+  attendees     CrawlAttendee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hostBusinessId])
+  @@index([status])
+  @@index([startDate])
+  @@index([isPublished])
+}
+
+model CrawlStop {
+  id         String @id @default(cuid())
+  crawlId    String
+  businessId String
+  order      Int
+
+  crawl    Crawl              @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  business Business           @relation("CrawlStopBusiness", fields: [businessId], references: [id], onDelete: Cascade)
+  checkIns CrawlStopCheckIn[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([crawlId, businessId])
+  @@unique([crawlId, order])
+  @@index([businessId])
+}
+
+model CrawlAttendee {
+  id      String @id @default(cuid())
+  crawlId String
+  userId  String
+
+  registeredAt DateTime            @default(now())
+  status       CrawlAttendeeStatus @default(REGISTERED)
+  completedAt  DateTime?
+  bonusAwarded Boolean             @default(false)
+
+  crawl        Crawl              @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stopCheckIns CrawlStopCheckIn[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([crawlId, userId])
+  @@index([crawlId])
+  @@index([userId])
+}
+
+model CrawlStopCheckIn {
+  id          String @id @default(cuid())
+  crawlStopId String
+  attendeeId  String
+  userId      String
+
+  checkedInAt  DateTime @default(now())
+  pointsEarned Int      @default(0)
+  latitude     Float?
+  longitude    Float?
+
+  crawlStop CrawlStop     @relation(fields: [crawlStopId], references: [id], onDelete: Cascade)
+  attendee  CrawlAttendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([crawlStopId, attendeeId])
+  @@index([crawlStopId])
+  @@index([userId])
+}
+
+model GoOutStatus {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  isActive    Boolean  @default(false)
+  latitude    Float
+  longitude   Float
+  activatedAt DateTime @default(now())
+  expiresAt   DateTime
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invites BusinessInvite[]
+
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, expiresAt])
+  @@index([latitude, longitude])
+}
+
+model BusinessInvite {
+  id            String  @id @default(cuid())
+  businessId    String
+  userId        String
+  goOutStatusId String?
+  promotionId   String?
+
+  title   String
+  message String @db.Text
+  status  String @default("SENT") // SENT, VIEWED, ACCEPTED, DECLINED
+
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goOutStatus GoOutStatus? @relation(fields: [goOutStatusId], references: [id], onDelete: SetNull)
+  promotion   Promotion?   @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([businessId])
 }

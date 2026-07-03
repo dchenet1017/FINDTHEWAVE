@@ -1,5 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, CheckCircle, Calendar, Gift, MapPin, AlertCircle } from 'lucide-react'
+import { Bell, CheckCircle, Calendar, Gift, MapPin, AlertCircle, Tag } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import {
@@ -7,98 +6,39 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/DropdownMenu'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Link } from 'react-router-dom'
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useNotifications'
+import { useAcceptInvite, useDeclineInvite } from '@/hooks/useInvites'
+import type { NotificationRow } from '@/hooks/useNotifications'
 
-interface Notification {
-  id: string
-  type: 'check_in' | 'booking' | 'reward' | 'community' | 'system'
-  title: string
-  message: string
-  isRead: boolean
-  createdAt: string
-  link?: string
-}
-
-const notificationIcons = {
+const notificationIcons: Record<string, typeof Bell> = {
   check_in: MapPin,
   booking: Calendar,
   reward: Gift,
   community: CheckCircle,
+  business_invite: Tag,
   system: AlertCircle,
 }
 
-const notificationColors = {
+const notificationColors: Record<string, string> = {
   check_in: 'text-blue-500',
   booking: 'text-green-500',
   reward: 'text-yellow-500',
   community: 'text-purple-500',
+  business_invite: 'text-pink-500',
   system: 'text-red-500',
 }
 
 export function UserNotifications() {
-  const queryClient = useQueryClient()
+  const { data } = useNotifications()
+  const notifications = data?.items ?? []
+  const unreadCount = data?.unreadCount ?? 0
 
-  // Fetch notifications
-  const { data: notifications = [] } = useQuery<Notification[]>({
-    queryKey: ['user', 'notifications'],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      return [
-        {
-          id: '1',
-          type: 'check_in',
-          title: 'Check-in Successful',
-          message: 'You checked in at Ocean Breeze Restaurant',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          link: '/dashboard/places',
-        },
-        {
-          id: '2',
-          type: 'reward',
-          title: 'Points Earned',
-          message: 'You earned 50 points for your check-in',
-          isRead: false,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          link: '/dashboard/rewards',
-        },
-        {
-          id: '3',
-          type: 'booking',
-          title: 'Booking Confirmed',
-          message: 'Your booking with WaveLeader Mike is confirmed',
-          isRead: true,
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          link: '/dashboard/bookings',
-        },
-      ]
-    },
-  })
+  const markAsReadMutation = useMarkNotificationRead()
+  const markAllAsReadMutation = useMarkAllNotificationsRead()
+  const acceptInviteMutation = useAcceptInvite()
+  const declineInviteMutation = useDeclineInvite()
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length
-
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      return id
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'notifications'] })
-    },
-  })
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 300))
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'notifications'] })
-    },
-  })
-
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: NotificationRow) => {
     if (!notification.isRead) {
       markAsReadMutation.mutate(notification.id)
     }
@@ -147,11 +87,16 @@ export function UserNotifications() {
             </div>
           ) : (
             notifications.map((notification) => {
-              const Icon = notificationIcons[notification.type]
-              const iconColor = notificationColors[notification.type]
+              const Icon = notificationIcons[notification.type] || AlertCircle
+              const iconColor = notificationColors[notification.type] || 'text-gray-400'
+              const inviteId =
+                notification.type === 'business_invite'
+                  ? (notification.data?.inviteId as string | undefined)
+                  : undefined
 
-              const content = (
+              return (
                 <div
+                  key={notification.id}
                   className={cn(
                     'p-3 hover:bg-dark-bg transition-colors cursor-pointer',
                     !notification.isRead ? 'bg-primary/5 border-l-2 border-primary' : ''
@@ -182,41 +127,37 @@ export function UserNotifications() {
                       <p className="text-xs text-gray-500 mt-1">
                         {formatDateTime(notification.createdAt)}
                       </p>
+                      {inviteId && (
+                        <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            loading={acceptInviteMutation.isPending}
+                            onClick={() => acceptInviteMutation.mutate(inviteId)}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            loading={declineInviteMutation.isPending}
+                            onClick={() => declineInviteMutation.mutate(inviteId)}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               )
-
-              if (notification.link) {
-                return (
-                  <Link key={notification.id} to={notification.link}>
-                    {content}
-                  </Link>
-                )
-              }
-
-              return <div key={notification.id}>{content}</div>
             })
           )}
         </div>
 
-        {notifications.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <div className="p-2">
-              <Link to="/dashboard/notifications">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center text-sm"
-                >
-                  View All Notifications
-                </Button>
-              </Link>
-            </div>
-          </>
-        )}
+        {notifications.length > 0 && <DropdownMenuSeparator />}
       </div>
     </DropdownMenu>
   )
 }
-

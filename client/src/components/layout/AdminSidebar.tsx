@@ -50,6 +50,7 @@ const navigation: NavItem[] = [
     children: [
       { name: 'Listings', href: '/admin/listings' },
       { name: 'Events', href: '/admin/events' },
+      { name: 'Bar Crawls', href: '/admin/crawls' },
       { name: 'Promotions', href: '/admin/promotions' },
     ],
   },

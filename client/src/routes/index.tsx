@@ -74,6 +74,14 @@ import EventsManagementPage from '@/pages/business/EventsManagementPage'
 import CreateEventPage from '@/pages/business/CreateEventPage'
 import EventAttendeesPage from '@/pages/business/EventAttendeesPage'
 import EventCheckInPage from '@/pages/business/EventCheckInPage'
+import CrawlsPage from '@/pages/crawls/CrawlsPage'
+import CrawlDetailsPage from '@/pages/crawls/CrawlDetailsPage'
+import CrawlsManagementPage from '@/pages/business/CrawlsManagementPage'
+import CreateCrawlPage from '@/pages/business/CreateCrawlPage'
+import CrawlAttendeesPage from '@/pages/business/CrawlAttendeesPage'
+import CrawlStopCheckInPage from '@/pages/business/CrawlStopCheckInPage'
+import AdminCrawlsPage from '@/pages/admin/content/AdminCrawlsPage'
+import GoOutQueuePage from '@/pages/business/GoOutQueuePage'
 import BookWaveLeaderPage from '@/pages/booking/BookWaveLeaderPage'
 import PaymentPage from '@/pages/booking/PaymentPage'
 import BookingConfirmationPage from '@/pages/booking/BookingConfirmationPage'
@@ -114,6 +122,8 @@ export const router = createBrowserRouter([
           { path: 'waveleaders', element: <WaveLeadersPage /> },
           { path: 'events', element: <EventsPage /> },
           { path: 'events/:id', element: <EventDetailsPage /> },
+          { path: 'crawls', element: <CrawlsPage /> },
+          { path: 'crawls/:id', element: <CrawlDetailsPage /> },
           { path: 'booking/:waveLeaderId', element: <BookWaveLeaderPage /> },
         ],
       },
@@ -173,6 +183,7 @@ export const router = createBrowserRouter([
           { path: 'waveleaders/:id', element: <WaveLeaderDetail /> },
           { path: 'listings', element: <ListingsPage /> },
           { path: 'events', element: <AdminEventsPage /> },
+          { path: 'crawls', element: <AdminCrawlsPage /> },
           { path: 'promotions', element: <PromotionsPage /> },
           { path: 'analytics', element: <AnalyticsOverview /> },
           { path: 'analytics/revenue', element: <RevenueAnalytics /> },
@@ -208,6 +219,12 @@ export const router = createBrowserRouter([
           { path: 'events/:id/edit', element: <CreateEventPage /> },
           { path: 'events/:id/attendees', element: <EventAttendeesPage /> },
           { path: 'events/:id/check-in', element: <EventCheckInPage /> },
+          { path: 'crawls', element: <CrawlsManagementPage /> },
+          { path: 'crawls/create', element: <CreateCrawlPage /> },
+          { path: 'crawls/:id/edit', element: <CreateCrawlPage /> },
+          { path: 'crawls/:id/attendees', element: <CrawlAttendeesPage /> },
+          { path: 'crawls/:id/check-in', element: <CrawlStopCheckInPage /> },
+          { path: 'go-out', element: <GoOutQueuePage /> },
           { path: 'promotions', element: <div className="p-8 text-center text-gray-400">Promotions page coming soon</div> },
           { path: 'reviews', element: <div className="p-8 text-center text-gray-400">Reviews page coming soon</div> },
           { path: 'customers', element: <div className="p-8 text-center text-gray-400">Customers page coming soon</div> },

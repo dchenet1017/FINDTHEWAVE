@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Menu, X, Loader2, Heart, MapPin, Layers } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Menu, X, Loader2, Heart, MapPin, Layers, MapPinned } from 'lucide-react'
 import { MapContainer } from '@/components/map/MapContainer'
 import { BusinessMarkerLayer } from '@/components/map/BusinessMarkerLayer'
 import { BusinessPopup } from '@/components/map/BusinessPopup'
 import { WaveLeaderMarkerLayer } from '@/components/map/WaveLeaderMarkerLayer'
 import { WaveLeaderPopup } from '@/components/map/WaveLeaderPopup'
+import { CrawlMarkerLayer } from '@/components/map/CrawlMarkerLayer'
 import { UserMapSidebar } from '@/components/map/UserMapSidebar'
 import { FavoriteButton } from '@/components/map/FavoriteButton'
 import { CheckInButton } from '@/components/map/CheckInButton'
@@ -15,11 +17,13 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 import { useMapBusinesses } from '@/hooks/useBusinesses'
 import { useNearbyWaveLeaders } from '@/hooks/useWaveLeaders'
+import { useNearbyCrawls } from '@/hooks/useCrawls'
 import { useMapStore } from '@/store/mapStore'
 import { useFavorites } from '@/hooks/useUserFavorites'
 import { getCurrentPosition } from '@/lib/mapbox'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
+import type { Crawl } from '@/types/crawl'
 
 export default function UserMapPage() {
   const [mapInstance, setMapInstance] = useState<any>(null)
@@ -34,7 +38,9 @@ export default function UserMapPage() {
   const [showCheckIns, setShowCheckIns] = useState(false)
   const [showWaveLeaders, setShowWaveLeaders] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
+  const [showCrawls, setShowCrawls] = useState(false)
   const [selectedWaveLeader, setSelectedWaveLeader] = useState<any>(null)
+  const [selectedCrawl, setSelectedCrawl] = useState<Crawl | null>(null)
 
   const { filters, setFilters } = useMapStore()
   const { data: businessesData, isFetching } = useMapBusinesses(bounds)
@@ -55,6 +61,13 @@ export default function UserMapPage() {
     25,
     showWaveLeaders
   )
+  const { data: crawlsData } = useNearbyCrawls(
+    centerForWaveLeaders?.lat,
+    centerForWaveLeaders?.lng,
+    25,
+    showCrawls
+  )
+  const crawls = crawlsData?.items ?? []
 
   useEffect(() => {
     getCurrentPosition()
@@ -233,6 +246,17 @@ export default function UserMapPage() {
                     size="sm"
                   />
                 </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-300 flex items-center gap-1.5">
+                    <MapPinned className="h-3.5 w-3.5 text-purple-400" />
+                    Bar Crawls
+                  </span>
+                  <Switch
+                    checked={showCrawls}
+                    onCheckedChange={setShowCrawls}
+                    size="sm"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -323,6 +347,26 @@ export default function UserMapPage() {
                   onClose={() => setSelectedWaveLeader(null)}
                 />
               )}
+
+              {/* Bar crawl stop markers */}
+              {showCrawls && crawls.length > 0 && (
+                <CrawlMarkerLayer
+                  map={map}
+                  crawls={crawls}
+                  selectedId={selectedCrawl?.id}
+                  onClick={(c) => {
+                    setSelectedCrawl(c)
+                    const firstStop = c.stops.find((s) => s.business?.latitude != null && s.business?.longitude != null)
+                    if (firstStop?.business) {
+                      map.flyTo({
+                        center: [Number(firstStop.business.longitude), Number(firstStop.business.latitude)],
+                        zoom: 13,
+                        essential: true,
+                      })
+                    }
+                  }}
+                />
+              )}
             </>
           )}
         </MapContainer>
@@ -372,6 +416,31 @@ export default function UserMapPage() {
                     View Details
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Selected crawl card */}
+        {selectedCrawl && (
+          <div className="absolute bottom-4 left-4 right-4 z-30 lg:left-auto lg:right-4 lg:w-80">
+            <Card className="bg-dark-card border-purple-500/40">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{selectedCrawl.title}</p>
+                    <p className="text-xs text-gray-400 mt-1">{selectedCrawl.stops.length} stops</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedCrawl(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-300 line-clamp-2">{selectedCrawl.description}</p>
+                <Link to={`/crawls/${selectedCrawl.id}`} className="block">
+                  <Button variant="secondary" size="sm" className="w-full">
+                    View Crawl
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>

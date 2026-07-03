@@ -15,6 +15,11 @@ import { waveleadersPublicRoutes } from './modules/waveleaders-public/waveleader
 import bookingRoutes from './modules/bookings/booking.routes'
 import paymentRoutes from './modules/payments/payment.routes'
 import eventRoutes from './modules/events/event.routes'
+import crawlRoutes from './modules/crawls/crawl.routes'
+import businessCrawlsRoutes from './modules/business/business-crawls.routes'
+import notificationRoutes from './modules/notifications/notification.routes'
+import goOutRoutes from './modules/go-out/go-out.routes'
+import inviteRoutes from './modules/invites/invite.routes'
 import { errorHandler } from './middleware/errorHandler'
 import { successResponse } from './utils/response'
 
@@ -69,6 +74,11 @@ await server.register(waveleadersPublicRoutes, { prefix: '/api/waveleaders' })
 await server.register(bookingRoutes, { prefix: '/api/bookings' })
 await server.register(paymentRoutes, { prefix: '/api/payments' })
 await server.register(eventRoutes, { prefix: '/api/events' })
+await server.register(crawlRoutes, { prefix: '/api/crawls' })
+await server.register(businessCrawlsRoutes, { prefix: '/api/business/crawls' })
+await server.register(notificationRoutes, { prefix: '/api/notifications' })
+await server.register(goOutRoutes, { prefix: '/api/go-out' })
+await server.register(inviteRoutes, { prefix: '/api/invites' })
 
 // Health check
 server.get('/api/health', async () => {

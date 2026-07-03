@@ -15,6 +15,7 @@ import {
   Waves,
   LogOut,
   UserSearch,
+  MapPinned,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -58,6 +59,11 @@ const navigation: NavItem[] = [
     name: 'Digital Passport',
     href: '/dashboard/passport',
     icon: Ticket,
+  },
+  {
+    name: 'Bar Crawls',
+    href: '/crawls',
+    icon: MapPinned,
   },
   {
     name: 'Communities',

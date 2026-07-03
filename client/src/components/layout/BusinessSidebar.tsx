@@ -16,6 +16,8 @@ import {
   Waves,
   BadgeCheck,
   LogOut,
+  MapPinned,
+  Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/Avatar'
@@ -37,6 +39,8 @@ const navigation: NavItem[] = [
   { name: 'My Location', href: '/business/map', icon: MapIcon },
   { name: 'Advertisements', href: '/business/ads', icon: Megaphone },
   { name: 'Events', href: '/business/events', icon: CalendarDays },
+  { name: 'Bar Crawls', href: '/business/crawls', icon: MapPinned },
+  { name: 'Go Out Queue', href: '/business/go-out', icon: Radio },
   { name: 'Promotions', href: '/business/promotions', icon: Gift },
   { name: 'Reviews', href: '/business/reviews', icon: Star },
   { name: 'Customers', href: '/business/customers', icon: Users },
