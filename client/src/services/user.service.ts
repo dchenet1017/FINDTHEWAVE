@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import type { Business as BusinessType } from '../../shared/types/business'
+import type { Business as BusinessType } from '../../../shared/types/business'
 
 export interface UserStats {
   totalCheckIns: number
