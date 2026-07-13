@@ -152,7 +152,8 @@ export const router = createBrowserRouter([
       {
         element: <UserLayout />,
         children: [
-          { index: true, element: <UserDashboard /> },
+          { index: true, element: <Navigate to="/dashboard/map" replace /> },
+          { path: 'home', element: <UserDashboard /> },
           { path: 'map', element: <UserMapPage /> },
           { path: 'places', element: <PlacesPage /> },
           { path: 'bookings', element: <BookingsPage /> },

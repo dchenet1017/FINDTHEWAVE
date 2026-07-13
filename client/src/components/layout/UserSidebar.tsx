@@ -32,7 +32,7 @@ interface NavItem {
 const navigation: NavItem[] = [
   {
     name: 'Dashboard',
-    href: '/dashboard',
+    href: '/dashboard/home',
     icon: Home,
   },
   {
@@ -100,8 +100,8 @@ export function UserSidebar({ isCollapsed = false, onToggle, onClose }: UserSide
   const { logout } = useAuth()
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return location.pathname === '/dashboard'
+    if (href === '/dashboard/home') {
+      return location.pathname === '/dashboard' || location.pathname === '/dashboard/home'
     }
     return location.pathname === href || location.pathname.startsWith(href + '/')
   }
