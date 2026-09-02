@@ -56,6 +56,26 @@ enum AdStatus {
   CANCELLED
 }
 
+/// What the user said they mainly want out of WaveFinder, picked in onboarding step 3
+enum ExperienceGoal {
+  GO_OUT
+  EXPLORE_PLACES
+  PLAN_AHEAD
+}
+
+enum GoOutIntentStatus {
+  ACTIVE
+  EXPIRED
+  CLAIMED
+}
+
+enum BusinessOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -74,6 +94,22 @@ model User {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  // Onboarding wizard state + the answers it collects
+  onboardingCompleted    Boolean         @default(false)
+  onboardingCompletedAt  DateTime?
+  /// Furthest step reached, so an abandoned wizard resumes where it left off
+  onboardingStep         Int             @default(1)
+  interests              String[]        @default([])
+  experienceGoal         ExperienceGoal?
+  /// 0 = Chill, 100 = Turnt
+  nightVibe              Int             @default(50)
+  maxDistanceMiles       Int             @default(5)
+  notificationsEnabled   Boolean         @default(true)
+  locationSharingEnabled Boolean         @default(false)
+  locationLat            Float?
+  locationLng            Float?
+  locationLabel          String?
+
   // Relations
   waveLeader           WaveLeader?
   business             Business?
@@ -90,6 +126,7 @@ model User {
   crawlAttendances     CrawlAttendee[]
   crawlStopCheckIns    CrawlStopCheckIn[]
   goOutStatus          GoOutStatus?
+  goOutIntents         GoOutIntent[]
   invitesReceived      BusinessInvite[]
 }
 
@@ -165,6 +202,7 @@ model Business {
   hostedCrawls   Crawl[]          @relation("CrawlHost")
   crawlStops     CrawlStop[]      @relation("CrawlStopBusiness")
   invitesSent    BusinessInvite[]
+  goOutOffers    BusinessOffer[]
 }
 
 model Community {
@@ -657,6 +695,58 @@ model GoOutStatus {
 
   @@index([isActive, expiresAt])
   @@index([latitude, longitude])
+}
+
+/// A user raising their hand: "I want to go out", broadcast to nearby venues.
+/// Superseded GoOutStatus, which was a plain availability toggle.
+model GoOutIntent {
+  id        String            @id @default(cuid())
+  userId    String
+  status    GoOutIntentStatus @default(ACTIVE)
+  /// Free-form vibe tags, e.g. ROOFTOP, LIVE_MUSIC. See go-out.schema.ts
+  vibes     String[]          @default([])
+  partySize Int               @default(1)
+
+  /// Stored as plain columns and queried with ST_MakePoint(...)::geography,
+  /// matching Business/Event/Crawl. There is no geometry column in this schema.
+  latitude  Float
+  longitude Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers BusinessOffer[]
+
+  @@index([status, expiresAt])
+  @@index([userId, status])
+  @@index([latitude, longitude])
+}
+
+/// A venue's response to demand. intentId is null for an open broadcast, which
+/// the first responding user claims.
+model BusinessOffer {
+  id         String  @id @default(cuid())
+  businessId String
+  intentId   String?
+
+  message         String  @db.Text
+  perkDescription String
+  /// Shown only to a user who has accepted
+  doorCode        String?
+
+  status      BusinessOfferStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  expiresAt   DateTime
+  respondedAt DateTime?
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  intent   GoOutIntent? @relation(fields: [intentId], references: [id], onDelete: Cascade)
+
+  @@index([intentId, status])
+  @@index([businessId, createdAt])
+  @@index([status, expiresAt])
 }
 
 model BusinessInvite {

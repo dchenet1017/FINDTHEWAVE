@@ -17,6 +17,7 @@ import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import UnauthorizedPage from '@/pages/UnauthorizedPage'
 import MapPage from '@/pages/map/MapPage'
+import OnboardingPage from '@/pages/onboarding/OnboardingPage'
 import BusinessDetailPage from '@/pages/business/BusinessDetailPage'
 import CommunitiesPage from '@/pages/communities/CommunitiesPage'
 import CommunityDetailPage from '@/pages/communities/CommunityDetailPage'
@@ -128,6 +129,14 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+
+  // First-run onboarding wizard - full-screen, no layout chrome.
+  // Consumer accounts only; other roles have their own sign-up flows.
+  {
+    path: '/onboarding',
+    element: <ProtectedRoute allowedRoles={['USER']} />,
+    children: [{ index: true, element: <OnboardingPage /> }],
   },
 
   // WaveLeader registration (protected, USER+)

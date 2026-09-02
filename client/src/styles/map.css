@@ -1,66 +1,4 @@
-.wavefinder-marker {
-  position: relative;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  transform: translate(-50%, -50%);
-}
-
-.marker-pin {
-  position: relative;
-  width: 18px;
-  height: 18px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.marker-pin .marker-dot {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #0c0c0f;
-  border-radius: 50%;
-  top: 5px;
-  left: 5px;
-}
-
-.marker-pin.marker-selected {
-  box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.35), 0 6px 12px rgba(0, 0, 0, 0.35);
-}
-
-.wavefinder-marker:hover .marker-pin {
-  transform: rotate(-45deg) scale(1.08);
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.35);
-}
-
-.marker-sponsored .marker-pulse {
-  position: absolute;
-  top: -6px;
-  left: -6px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  animation: marker-pulse 1.8s infinite;
-}
-
-@keyframes marker-pulse {
-  0% {
-    transform: scale(0.5);
-    opacity: 0.8;
-  }
-  70% {
-    transform: scale(1.25);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.25);
-    opacity: 0;
-  }
-}
-
+/* Popups. Marker styles live in the "Venue markers" section below. */
 .mapboxgl-popup {
   max-width: 320px;
 }
@@ -89,3 +27,175 @@
   border: 1px solid #2f2f2f;
 }
 
+
+/* ==========================================================================
+   Venue markers
+   Category-specific animated markers built by
+   components/map/markers/venueMarkerFactory.ts. Replaced the pulsing dot.
+   Every animation is subtle and slow on purpose, and all of them stop under
+   prefers-reduced-motion.
+   ========================================================================== */
+
+.wf-venue-marker {
+  --wf-marker-color: #6c5ce7;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  will-change: transform;
+  transition: transform 0.16s ease;
+}
+
+.wf-venue-marker:hover,
+.wf-venue-marker:focus-visible {
+  transform: scale(1.12);
+  outline: none;
+  z-index: 2;
+}
+
+.wf-venue-marker__chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #14131c;
+  border: 2px solid var(--wf-marker-color);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.wf-venue-marker__art {
+  width: 22px;
+  height: 22px;
+  color: var(--wf-marker-color);
+  overflow: visible;
+}
+
+.wf-venue-marker--selected .wf-venue-marker__chip {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--wf-marker-color) 35%, transparent),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Promoted venues keep a ring, carried over from the old marker */
+.wf-venue-marker__sponsor-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--wf-marker-color) 55%, transparent);
+  animation: wf-sponsor-ring 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes wf-sponsor-ring {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50%      { transform: scale(1.12); opacity: 0.15; }
+}
+
+/* 🕺 badge: this venue has a live Go Out offer */
+.wf-venue-marker__badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 50%;
+  background: #6c5ce7;
+  border: 1.5px solid #14131c;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  animation: wf-offer-badge 1.9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes wf-offer-badge {
+  0%, 100% { transform: translateY(0) rotate(-7deg); }
+  50%      { transform: translateY(-2px) rotate(7deg); }
+}
+
+/* --- Restaurant: seated people + steam --- */
+.wf-anim-sit-a { animation: wf-sit 3.4s ease-in-out infinite; transform-origin: 4px 19px; }
+.wf-anim-sit-b { animation: wf-sit 3.4s ease-in-out infinite 1.1s; transform-origin: 20px 19px; }
+
+@keyframes wf-sit {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(0.9px); }
+}
+
+.wf-anim-steam { animation: wf-steam 2.8s ease-in-out infinite; }
+
+@keyframes wf-steam {
+  0%       { transform: translateY(1px); opacity: 0; }
+  35%      { opacity: 0.9; }
+  100%     { transform: translateY(-2.5px); opacity: 0; }
+}
+
+/* --- Bar: raising glasses --- */
+.wf-anim-cheers-a { animation: wf-cheers 3.6s ease-in-out infinite; transform-origin: 3.5px 15.5px; }
+.wf-anim-cheers-b { animation: wf-cheers 3.6s ease-in-out infinite 0.35s; transform-origin: 20.5px 15.5px; }
+
+@keyframes wf-cheers {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  40%           { transform: rotate(-13deg); }
+}
+
+.wf-anim-fizz { animation: wf-steam 3.1s ease-in-out infinite 0.6s; }
+
+/* --- Music venue: bouncing note over an equaliser --- */
+.wf-anim-note { animation: wf-note 2.6s ease-in-out infinite; transform-origin: 12px 8px; }
+
+@keyframes wf-note {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-1.6px) rotate(3deg); }
+}
+
+.wf-anim-eq-a { animation: wf-eq 1.5s ease-in-out infinite; transform-origin: center 19px; }
+.wf-anim-eq-b { animation: wf-eq 1.5s ease-in-out infinite 0.25s; transform-origin: center 19px; }
+.wf-anim-eq-c { animation: wf-eq 1.5s ease-in-out infinite 0.5s; transform-origin: center 19px; }
+
+@keyframes wf-eq {
+  0%, 100% { transform: scaleY(0.55); }
+  50%      { transform: scaleY(1); }
+}
+
+/* --- Gym: dumbbell press --- */
+.wf-anim-lift { animation: wf-lift 2.9s ease-in-out infinite; transform-origin: 12px 12px; }
+
+@keyframes wf-lift {
+  0%, 100% { transform: translateY(1.4px); }
+  50%      { transform: translateY(-1.4px); }
+}
+
+/* --- Default: a settled breathing dot, not the old ping --- */
+.wf-anim-breathe { animation: wf-breathe 3.6s ease-in-out infinite; transform-origin: 12px 12px; }
+
+@keyframes wf-breathe {
+  0%, 100% { transform: scale(0.86); opacity: 0.85; }
+  50%      { transform: scale(1); opacity: 1; }
+}
+
+.wf-anim-ring { animation: wf-ring 3.6s ease-in-out infinite; transform-origin: 12px 12px; }
+
+@keyframes wf-ring {
+  0%, 100% { transform: scale(0.92); opacity: 0.2; }
+  50%      { transform: scale(1.04); opacity: 0.5; }
+}
+
+/* Clusters keep the old circle layer; only leaves get DOM markers. */
+@media (prefers-reduced-motion: reduce) {
+  .wf-venue-marker *,
+  .wf-venue-marker__badge,
+  .wf-venue-marker__sponsor-ring {
+    animation: none !important;
+  }
+}

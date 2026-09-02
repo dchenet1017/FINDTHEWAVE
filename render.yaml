@@ -13,7 +13,9 @@ services:
     autoDeploy: yes
     buildCommand: npm install && cd server && npm run build && npx prisma db push
     startCommand: cd server && npm start
-    healthCheckPath: /api/health
+    # Liveness only - does not touch the database, so a DB blip cannot get the
+    # whole service restarted. Use /health/ready when diagnosing a deploy.
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -32,7 +34,13 @@ services:
       - key: REFRESH_TOKEN_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        sync: false  # Set after frontend is deployed, e.g. https://wavefinder-client.onrender.com
+        # REQUIRED. Drives the CORS allowlist - the browser is blocked without it.
+        # Set after the frontend deploys, e.g. https://wavefinder-client.onrender.com
+        sync: false
+      - key: CORS_ORIGINS
+        # Optional, comma separated. Extra browser origins (custom domain,
+        # preview deploys) allowed alongside FRONTEND_URL.
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PUBLISHABLE_KEY
@@ -49,10 +57,14 @@ services:
     staticPublishPath: ./client/dist
     envVars:
       - key: VITE_API_URL
-        sync: false  # Set to https://wavefinder-server.onrender.com/api
+        # REQUIRED, and must end in /api. Vite inlines this at BUILD time, so
+        # changing it needs a redeploy of this static site, not just a restart.
+        sync: false  # e.g. https://wavefinder-server.onrender.com/api
       - key: VITE_STRIPE_PUBLISHABLE_KEY
         sync: false
       - key: VITE_MAPBOX_TOKEN
+        # REQUIRED for maps. Frontend only - the server never uses Mapbox.
+        # Also inlined at build time.
         sync: false
     routes:
       - type: rewrite

@@ -42,6 +42,7 @@ export interface UserWithoutPassword {
   role: Role
   isVerified: boolean
   isActive: boolean
+  onboardingCompleted: boolean
   lastLogin: Date | null
   createdAt: Date
   updatedAt: Date

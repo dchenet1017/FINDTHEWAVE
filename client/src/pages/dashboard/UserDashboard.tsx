@@ -21,7 +21,8 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { CheckInButton } from '@/components/map/CheckInButton'
-import { GoOutButton } from '@/components/dashboard/GoOutButton'
+import { GoOutButton } from '@/components/goout/GoOutButton'
+import { OffersInbox } from '@/components/goout/OffersInbox'
 import { useUserStats } from '@/hooks/useUserDashboard'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 import type { Business } from '../../../../shared/types/business'
@@ -91,7 +92,6 @@ export default function UserDashboard() {
           <p className="text-gray-400 mt-1">{currentDate}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <GoOutButton />
           <Button onClick={() => navigate('/dashboard/map')}>
             <MapIcon className="h-4 w-4 mr-2" />
             Explore Map
@@ -102,6 +102,10 @@ export default function UserDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* "I want to go out" - headline CTA, or the live broadcast banner */}
+      <GoOutButton />
+      <OffersInbox />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

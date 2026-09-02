@@ -1,7 +1,35 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 
+/**
+ * API root, e.g. https://wavefinder-server.onrender.com/api
+ *
+ * Baked in at BUILD time by Vite, so the static site has to be rebuilt after
+ * changing it on Render - restarting is not enough. Falls back to the relative
+ * /api, which is what local dev uses through the Vite proxy.
+ */
+function resolveBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim()
+  if (!raw) return '/api'
+
+  // A trailing slash would produce '//auth/me' against the server.
+  const normalized = raw.replace(/\/+$/, '')
+
+  if (import.meta.env.PROD && !/\/api$/.test(normalized)) {
+    // Every service call is written relative to the /api prefix, so a base URL
+    // without it 404s on every request.
+    console.warn(
+      `[api] VITE_API_URL is "${normalized}" — it usually needs to end in /api, ` +
+        `e.g. https://your-server.onrender.com/api`
+    )
+  }
+
+  return normalized
+}
+
+export const API_BASE_URL = resolveBaseUrl()
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -53,7 +81,7 @@ api.interceptors.response.use(
             refreshToken: string
           }
         }>(
-          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           {
             refreshToken,
           },

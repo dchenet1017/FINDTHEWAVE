@@ -3,6 +3,16 @@ import mapboxgl from 'mapbox-gl'
 // Set access token from env
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
+if (!mapboxgl.accessToken) {
+  // Without a token every map renders blank and geocoding returns nothing,
+  // with no error of its own. Vite inlines this at build time, so the static
+  // site must be rebuilt after setting it - restarting is not enough.
+  console.error(
+    '[mapbox] VITE_MAPBOX_TOKEN is not set — maps and geocoding will not work. ' +
+      'Set it in the environment and rebuild the frontend.'
+  )
+}
+
 export const defaultMapConfig = {
   center: [-74.006, 40.7128] as [number, number], // NYC
   zoom: 13,

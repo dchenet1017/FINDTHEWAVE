@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { cn, formatDistance } from '@/lib/utils'
 import { useMapBusinesses } from '@/hooks/useBusinesses'
 import { useMapStore } from '@/store/mapStore'
+import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
 
@@ -29,6 +30,8 @@ export default function MapPage() {
   const [mapInstance, setMapInstance] = useState<any>(null)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
+  // Venues running a live Go Out offer get the 🕺 badge
+  const { activeVenueIds } = useActiveOfferVenues()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
 
@@ -269,6 +272,8 @@ export default function MapPage() {
                       position={[lng, lat]}
                       type={biz.type as any}
                       isSelected={selectedBusiness?.id === biz.id}
+                      hasActiveOffer={activeVenueIds.has(biz.id)}
+                      label={biz.name}
                       onClick={() => handleSelectBusiness(biz)}
                     >
                       <div className="text-white text-sm space-y-1">

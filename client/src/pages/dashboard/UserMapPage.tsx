@@ -10,6 +10,8 @@ import { CrawlMarkerLayer } from '@/components/map/CrawlMarkerLayer'
 import { UserMapSidebar } from '@/components/map/UserMapSidebar'
 import { FavoriteButton } from '@/components/map/FavoriteButton'
 import { CheckInButton } from '@/components/map/CheckInButton'
+import { GoOutButton } from '@/components/goout/GoOutButton'
+import { OffersInbox } from '@/components/goout/OffersInbox'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Switch } from '@/components/ui/Switch'
@@ -20,6 +22,7 @@ import { useNearbyWaveLeaders } from '@/hooks/useWaveLeaders'
 import { useNearbyCrawls } from '@/hooks/useCrawls'
 import { useMapStore } from '@/store/mapStore'
 import { useFavorites } from '@/hooks/useUserFavorites'
+import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
 import { getCurrentPosition } from '@/lib/mapbox'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
@@ -45,6 +48,8 @@ export default function UserMapPage() {
   const { filters, setFilters } = useMapStore()
   const { data: businessesData, isFetching } = useMapBusinesses(bounds)
   const { data: favorites = [] } = useFavorites()
+  // Venues running a live Go Out offer get the 🕺 badge
+  const { activeVenueIds } = useActiveOfferVenues()
   const businesses: Business[] = Array.isArray(businessesData) ? businessesData : []
 
   const centerForWaveLeaders = userLocation
@@ -193,6 +198,16 @@ export default function UserMapPage() {
           </Badge>
         </div>
 
+        {/* "I want to go out" overlay - the primary action on this screen */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-3">
+          <div className="pointer-events-auto w-full max-w-md space-y-3">
+            <div className="max-h-[42vh] overflow-y-auto">
+              <OffersInbox className="rounded-2xl border border-gray-800 bg-dark-card/95 p-4 backdrop-blur-sm" />
+            </div>
+            <GoOutButton />
+          </div>
+        </div>
+
         {/* Layer controls */}
         <div className="absolute top-3 right-3 z-30">
           <Card className="bg-dark-card/95 backdrop-blur-sm border-gray-800 shadow-lg">
@@ -286,6 +301,7 @@ export default function UserMapPage() {
                 businesses={filteredBusinesses}
                 selectedId={selectedBusiness?.id}
                 onBusinessClick={handleSelectBusiness}
+                activeOfferVenueIds={activeVenueIds}
               />
 
               {/* Favorites layer - would use different marker style */}
