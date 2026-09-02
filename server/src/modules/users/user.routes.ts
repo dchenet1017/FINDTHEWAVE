@@ -3,6 +3,8 @@ import { userController } from './user.controller'
 import { authenticate } from '../../middleware/authenticate'
 import { validate } from '../../middleware/validate'
 import { updateProfileSchema, updateSettingsSchema } from './user.schema'
+import { onboardingController } from '../onboarding/onboarding.controller'
+import { updateOnboardingSchema } from '../onboarding/onboarding.schema'
 import multipart from '@fastify/multipart'
 
 export async function userRoutes(server: FastifyInstance) {
@@ -26,6 +28,19 @@ export async function userRoutes(server: FastifyInstance) {
 
   // Avatar upload
   server.post('/me/avatar', userController.uploadAvatar)
+
+  // Onboarding wizard
+  server.get('/me/onboarding', onboardingController.getState)
+  server.patch(
+    '/me/onboarding',
+    { preHandler: validate({ body: updateOnboardingSchema }) },
+    onboardingController.update
+  )
+  server.post(
+    '/me/onboarding/complete',
+    { preHandler: validate({ body: updateOnboardingSchema }) },
+    onboardingController.complete
+  )
 
   // Settings routes
   server.patch(

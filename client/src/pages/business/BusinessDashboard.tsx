@@ -15,6 +15,7 @@ import {
   Star,
   Users,
 } from 'lucide-react'
+import { BusinessDemandPanel } from '@/components/goout/BusinessDemandPanel'
 import { StatCard } from '@/components/business/StatCard'
 import { RevenueChart } from '@/components/business/RevenueChart'
 import { RecentCheckIns } from '@/components/business/RecentCheckIns'
@@ -103,6 +104,9 @@ export default function BusinessDashboard() {
           )}
         </div>
       </div>
+
+      {/* Live "I want to go out" demand near this venue */}
+      <BusinessDemandPanel />
 
       {!isVerified && (
         <Alert variant="warning">

@@ -2,8 +2,29 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authService } from '@/services/auth.service'
-import type { LoginCredentials, RegisterData } from '@/services/auth.service'
+import type { LoginCredentials, RegisterData, User } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+
+/**
+ * Consumer sign-ups land in the onboarding wizard instead of the dashboard.
+ * Businesses, wave leaders and admins have their own flows, so they skip it.
+ */
+const needsOnboarding = (user: User) =>
+  user.role === 'USER' && !user.onboardingCompleted
+
+/** Landing route for a user who is not being sent into onboarding */
+const homeRouteFor = (user: User) => {
+  switch (user.role) {
+    case 'ADMIN':
+      return '/admin'
+    case 'BUSINESS':
+      return '/business/dashboard'
+    case 'WAVELEADER':
+      return '/waveleader/dashboard'
+    default:
+      return '/dashboard'
+  }
+}
 
 export const useAuth = () => {
   const navigate = useNavigate()
@@ -49,6 +70,13 @@ export const useAuth = () => {
         setUser(data.data.user)
         queryClient.invalidateQueries({ queryKey: ['currentUser'] })
 
+        // An unfinished wizard resumes ahead of any saved destination
+        if (needsOnboarding(data.data.user)) {
+          navigate('/onboarding', { replace: true })
+          toast.success('Welcome back!')
+          return
+        }
+
         const from = (location.state as { from?: { pathname: string; search?: string } })?.from
         if (from?.pathname) {
           navigate(`${from.pathname}${from.search || ''}`, { replace: true })
@@ -56,20 +84,7 @@ export const useAuth = () => {
           return
         }
 
-        // Redirect based on role
-        switch (data.data.user.role) {
-          case 'ADMIN':
-            navigate('/admin')
-            break
-          case 'BUSINESS':
-            navigate('/business/dashboard')
-            break
-          case 'WAVELEADER':
-            navigate('/waveleader/dashboard')
-            break
-          default:
-            navigate('/dashboard')
-        }
+        navigate(homeRouteFor(data.data.user))
         toast.success('Welcome back!')
       } else {
         toast.error(data.error?.message || 'Login failed')
@@ -94,20 +109,15 @@ export const useAuth = () => {
         setUser(data.data.user)
         queryClient.invalidateQueries({ queryKey: ['currentUser'] })
 
-        // Redirect based on role (email verification skipped for now)
-        switch (data.data.user.role) {
-          case 'ADMIN':
-            navigate('/admin')
-            break
-          case 'BUSINESS':
-            navigate('/business/dashboard')
-            break
-          case 'WAVELEADER':
-            navigate('/waveleader/dashboard')
-            break
-          default:
-            navigate('/dashboard')
+        // New consumers go through onboarding instead of straight to the
+        // dashboard (email verification skipped for now)
+        if (needsOnboarding(data.data.user)) {
+          navigate('/onboarding', { replace: true })
+          toast.success('Account created successfully!')
+          return
         }
+
+        navigate(homeRouteFor(data.data.user))
         toast.success('Account created successfully!')
       } else {
         toast.error(data.error?.message || 'Registration failed')

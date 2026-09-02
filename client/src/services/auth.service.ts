@@ -36,6 +36,7 @@ export interface User {
   role: 'USER' | 'WAVELEADER' | 'BUSINESS' | 'ADMIN'
   isVerified: boolean
   isActive: boolean
+  onboardingCompleted: boolean
   lastLogin: string | null
   createdAt: string
   updatedAt: string

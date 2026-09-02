@@ -1,134 +1,106 @@
 import { useState } from 'react'
-import { Radio, Send, Users } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { Label } from '@/components/ui/Label'
-import { Avatar } from '@/components/ui/Avatar'
+import { Clock, Sparkles, Store } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog'
-import { useNearbyGoOutUsers, useSendInvite, type NearbyGoOutUser } from '@/hooks/useBusinessInvites'
+import { BusinessDemandPanel } from '@/components/goout/BusinessDemandPanel'
+import { useSentOffers } from '@/hooks/useGoOut'
+import { timeLeftLabel } from '@/types/goOut'
+
+const RADIUS_OPTIONS = [5, 10, 25]
+
+const OFFER_STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'success' | 'outline' | 'destructive' }
+> = {
+  PENDING: { label: 'Pending', variant: 'default' },
+  ACCEPTED: { label: 'Accepted', variant: 'success' },
+  DECLINED: { label: 'Declined', variant: 'outline' },
+  EXPIRED: { label: 'Expired', variant: 'outline' },
+}
 
 export default function GoOutQueuePage() {
-  const { data, isLoading } = useNearbyGoOutUsers(15, true)
-  const sendMut = useSendInvite()
-  const users = data?.items ?? []
-
-  const [target, setTarget] = useState<NearbyGoOutUser | null>(null)
-  const [title, setTitle] = useState('')
-  const [message, setMessage] = useState('')
-
-  const openInvite = (u: NearbyGoOutUser) => {
-    setTarget(u)
-    setTitle('')
-    setMessage('')
-  }
-
-  const submit = () => {
-    if (!target || !title.trim() || !message.trim()) return
-    sendMut.mutate(
-      { userId: target.userId, title: title.trim(), message: message.trim(), goOutStatusId: target.goOutStatusId },
-      { onSuccess: () => setTarget(null) }
-    )
-  }
+  const [radius, setRadius] = useState(10)
+  const { data } = useSentOffers()
+  const offers = data?.offers ?? []
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 text-white">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Radio className="h-6 w-6 text-success" />
-          Go Out Queue
-        </h1>
-        <p className="mt-1 text-sm text-gray-400">
-          People nearby who are available right now. Send them a deal to bring them in.
-        </p>
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
-      ) : users.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-700 bg-dark-card/50 px-6 py-20 text-center">
-          <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
-            <Users className="h-12 w-12 text-primary" />
-          </div>
-          <h2 className="text-lg font-semibold text-white">No one nearby right now</h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-400">
-            When users tap "Go Out" near your business, they'll show up here so you can send them a deal.
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Go Out Demand</h1>
+          <p className="mt-1 text-sm text-gray-400">
+            See who wants to go out near you and send them a reason to pick you.
           </p>
         </div>
-      ) : (
-        <ul className="space-y-3">
-          {users.map((u) => {
-            const name = [u.user.firstName, u.user.lastName].filter(Boolean).join(' ') || 'Guest'
-            return (
-              <li
-                key={u.goOutStatusId}
-                className="flex items-center gap-3 rounded-xl border border-gray-800 bg-dark-card p-4"
-              >
-                <Avatar src={u.user.avatar || undefined} fallback={name[0] || '?'} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{name}</p>
-                  <p className="text-xs text-gray-500">{u.distanceMiles} mi away</p>
-                </div>
-                <Badge variant="secondary" className="hidden sm:inline-flex">
-                  Active
-                </Badge>
-                <Button size="sm" onClick={() => openInvite(u)}>
-                  <Send className="mr-2 h-3.5 w-3.5" />
-                  Send Invite
-                </Button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
 
-      <Dialog open={!!target} onOpenChange={(o) => !o && setTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send a deal</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="invite-title">Title</Label>
-              <Input
-                id="invite-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Free appetizer tonight!"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-message">Message</Label>
-              <Textarea
-                id="invite-message"
-                rows={3}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Come on by, first round on us."
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              loading={sendMut.isPending}
-              disabled={!title.trim() || !message.trim()}
-              onClick={submit}
+        <div className="flex items-center gap-1 rounded-lg border border-gray-800 bg-dark-card p-1">
+          {RADIUS_OPTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setRadius(option)}
+              className={
+                option === radius
+                  ? 'rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white'
+                  : 'rounded-md px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-white'
+              }
             >
-              Send invite
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {option} mi
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <BusinessDemandPanel radiusMiles={radius} />
+
+      {/* Sent offers */}
+      <div className="rounded-2xl border border-gray-800 bg-dark-card p-6">
+        <h2 className="text-lg font-semibold">Offers you&apos;ve sent</h2>
+
+        {offers.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-dashed border-gray-700 px-6 py-10 text-center">
+            <Store className="mx-auto h-8 w-8 text-gray-600" />
+            <p className="mt-3 text-sm text-gray-500">
+              Nothing sent yet. Use “Send Wave Offer” above.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {offers.map((offer) => {
+              const badge = OFFER_STATUS[offer.status] ?? OFFER_STATUS.PENDING
+              return (
+                <li
+                  key={offer.id}
+                  className="rounded-xl border border-gray-800 bg-dark-bg p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="flex min-w-0 items-start gap-2 text-sm font-medium text-primary-light">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="truncate">{offer.perkDescription}</span>
+                    </p>
+                    <Badge variant={badge.variant} className="shrink-0">
+                      {badge.label}
+                    </Badge>
+                  </div>
+
+                  <p className="mt-2 line-clamp-2 text-sm text-gray-400">
+                    {offer.message}
+                  </p>
+
+                  <p className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {offer.status === 'PENDING'
+                        ? timeLeftLabel(offer.expiresAt)
+                        : new Date(offer.createdAt).toLocaleString()}
+                    </span>
+                    {offer.intentId === null && <span>Broadcast</span>}
+                  </p>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

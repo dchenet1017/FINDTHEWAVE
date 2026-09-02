@@ -2,7 +2,8 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
-import { config } from './config'
+import { config, warnOnMissingOptionalEnv } from './config'
+import { checkDatabase, connectWithRetry, prisma } from './lib/prisma'
 import { authRoutes } from './modules/auth/auth.routes'
 import adminRoutes from './modules/admin/admin.routes'
 import { businessRoutes } from './modules/businesses/business.routes'
@@ -28,25 +29,28 @@ const server = Fastify({
 })
 
 // Register plugins
-const allowedOrigins = [
-  config.frontend.url.replace(/\/$/, ''), // strip trailing slash
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-]
+// Built from FRONTEND_URL + CORS_ORIGINS; localhost is included off-production.
+const allowedOrigins = config.cors.origins
 
 await server.register(cors, {
   origin: (origin, cb) => {
-    // allow non-browser / same-origin requests
+    // allow non-browser / same-origin requests (curl, health checks)
     if (!origin) return cb(null, true)
+
     const normalizedOrigin = origin.replace(/\/$/, '')
     if (allowedOrigins.includes(normalizedOrigin)) {
       return cb(null, true)
     }
-    // allow any onrender.com subdomain as fallback
-    if (normalizedOrigin.endsWith('.onrender.com')) {
+
+    // Opt-in only. Because credentials are enabled, allowing every
+    // *.onrender.com origin would let any app hosted on Render make
+    // authenticated calls against this API. Set ALLOW_ALL_RENDER_ORIGINS=true
+    // to restore the old behaviour while sorting out FRONTEND_URL.
+    if (config.cors.allowAllRenderOrigins && normalizedOrigin.endsWith('.onrender.com')) {
       return cb(null, true)
     }
+
+    server.log.warn({ origin }, 'CORS: origin not in allowlist')
     return cb(new Error('Origin not allowed'), false)
   },
   credentials: true,
@@ -80,7 +84,17 @@ await server.register(notificationRoutes, { prefix: '/api/notifications' })
 await server.register(goOutRoutes, { prefix: '/api/go-out' })
 await server.register(inviteRoutes, { prefix: '/api/invites' })
 
-// Health check
+/**
+ * Liveness. Deliberately does not touch the database: this is what Render
+ * polls, and a health check that fails on a database blip would take the whole
+ * service down instead of letting it ride out the reconnect.
+ */
+server.get('/health', async () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+}))
+
+/** Same probe under the /api prefix, kept for existing callers. */
 server.get('/api/health', async () => {
   return successResponse({
     status: 'ok',
@@ -89,13 +103,45 @@ server.get('/api/health', async () => {
   })
 })
 
+/**
+ * Readiness: can this instance actually serve traffic? Reports the database,
+ * so use it when diagnosing a deploy - not as the health check path.
+ */
+server.get('/health/ready', async (_request, reply) => {
+  const databaseUp = await checkDatabase()
+  return reply.code(databaseUp ? 200 : 503).send({
+    status: databaseUp ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    checks: { database: databaseUp ? 'up' : 'down' },
+  })
+})
+
 // Start server
 const start = async () => {
   try {
+    warnOnMissingOptionalEnv()
+
+    // Listen before connecting so /health answers straight away. A managed
+    // database is often still waking when the web service boots, and a deploy
+    // should not be failed over a cold database that comes up seconds later.
     await server.listen({ port: config.port, host: '0.0.0.0' })
-    console.log(`🚀 Server running on http://localhost:${config.port}`)
+    console.log(`🚀 Server running on port ${config.port}`)
     console.log(`📝 Environment: ${config.nodeEnv}`)
     console.log(`🌐 Frontend URL: ${config.frontend.url}`)
+    console.log(`🔓 CORS allowlist: ${allowedOrigins.join(', ') || '(none)'}`)
+    if (config.cors.allowAllRenderOrigins) {
+      console.warn('⚠️  ALLOW_ALL_RENDER_ORIGINS is on — every *.onrender.com origin is permitted')
+    }
+
+    // Deliberately not fatal: the process stays up so /health/ready can report
+    // the database as down, which is far easier to diagnose than a crash loop.
+    // The retry middleware in lib/prisma reconnects once it is reachable.
+    await connectWithRetry().catch(() => {
+      console.error(
+        '❌ Started without a database connection. /health/ready will report ' +
+          'degraded and API routes will fail until it recovers.'
+      )
+    })
   } catch (err) {
     server.log.error(err)
     process.exit(1)
@@ -108,6 +154,8 @@ signals.forEach((signal) => {
   process.on(signal, async () => {
     console.log(`\n${signal} received, shutting down gracefully...`)
     await server.close()
+    // Release the pool so the database doesn't hold the connection open.
+    await prisma.$disconnect().catch(() => {})
     process.exit(0)
   })
 })
