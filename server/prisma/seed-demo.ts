@@ -13,6 +13,38 @@ import bcrypt from 'bcryptjs'
  *   npm run db:seed:demo   # this file
  */
 
+/**
+ * This script deletes every GoOutIntent and BusinessOffer row before it writes,
+ * which would destroy real demand and real offers on a live database. Refuse to
+ * run anywhere that looks like production unless someone opts in on purpose.
+ *
+ *   ALLOW_DEMO_SEED=yes npm run db:seed:demo
+ */
+function assertNotProduction() {
+  const url = process.env.DATABASE_URL ?? ''
+  const optedIn = process.env.ALLOW_DEMO_SEED === 'yes'
+
+  const isLocal = /@(localhost|127\.0\.0\.1|host\.docker\.internal|postgres)[:/]/.test(url)
+  const reasons: string[] = []
+
+  if (process.env.NODE_ENV === 'production') reasons.push('NODE_ENV=production')
+  if (url && !isLocal) reasons.push('DATABASE_URL does not point at localhost')
+
+  if (reasons.length && !optedIn) {
+    console.error('\n⛔ Refusing to seed demo data.')
+    for (const r of reasons) console.error(`   - ${r}`)
+    console.error(
+      '\n   This script wipes ALL GoOutIntent and BusinessOffer rows.' +
+        '\n   If you really mean it, re-run with ALLOW_DEMO_SEED=yes\n'
+    )
+    process.exit(1)
+  }
+
+  if (reasons.length && optedIn) {
+    console.warn('⚠️  Non-local database, continuing because ALLOW_DEMO_SEED=yes')
+  }
+}
+
 const prisma = new PrismaClient()
 
 const DEMO_DOMAIN = '@demo.wavefinder.com'
@@ -349,6 +381,7 @@ const DEMO_USERS: DemoUser[] = [
 ]
 
 async function main() {
+  assertNotProduction()
   console.log('🌊 Seeding onboarding + go-out demo data...')
 
   const businesses = await prisma.business.findMany({
