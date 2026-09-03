@@ -366,9 +366,16 @@ async function main() {
   const anchor = businesses[0]
   const anchorLat = Number(anchor.latitude)
   const anchorLng = Number(anchor.longitude)
-  const venue = (i: number) => businesses[i % businesses.length]
+
+  // A gym and a yoga studio have no business offering half price cocktails, so
+  // offers only ever come from venues someone would actually go out to.
+  const NIGHTLIFE_TYPES = ['BAR', 'RESTAURANT', 'ENTERTAINMENT', 'HOTEL']
+  const nightlife = businesses.filter((b) => NIGHTLIFE_TYPES.includes(b.type))
+  const venues = nightlife.length >= 3 ? nightlife : businesses
+  const venue = (i: number) => venues[i % venues.length]
 
   console.log(`📍 Anchor venue: ${anchor.name} (${anchorLat}, ${anchorLng})`)
+  console.log(`🍸 ${venues.length} venues eligible to send offers`)
 
   // --- Reset only what this script owns -------------------------------------
   console.log('🧹 Clearing previous go-out demo data...')
@@ -507,7 +514,8 @@ async function main() {
     // Two live offers to choose between, plus one of each resolved state.
     offers.push(
       {
-        businessId: venue(0).id,
+        // The anchor venue explicitly: this is the one business@wavefinder.com owns.
+        businessId: anchor.id,
         intentId: testIntentId,
         message: 'The bar is warming up and we saved you a spot. Come through.',
         perkDescription: '2-for-1 craft drafts until midnight',
@@ -527,7 +535,7 @@ async function main() {
         expiresAtMinutes: 50,
       },
       {
-        businessId: venue(3).id,
+        businessId: venue(2).id,
         intentId: testIntentId,
         message: 'Late night menu is on until 2am if you are still deciding.',
         perkDescription: 'Free appetizer with any entree',
@@ -538,7 +546,7 @@ async function main() {
         respondedAtMinutes: -20,
       },
       {
-        businessId: venue(4).id,
+        businessId: venue(3).id,
         intentId: testIntentId,
         message: 'Happy hour ends soon, wanted to give you first shot at it.',
         perkDescription: 'Half price cocktails',
@@ -569,10 +577,10 @@ async function main() {
   // Targeted offers to other raised hands, so the venue's sent-offer history
   // and the map's "actively competing" badges have something to show.
   const targeted: Array<[string, number, string, string]> = [
-    ['maya', 0, 'DJ starts at 11. Room is filling up fast.', 'No cover before midnight'],
+    ['maya', 6, 'DJ starts at 11. Room is filling up fast.', 'No cover before midnight'],
     ['andre', 1, 'Rooftop has space for five right now.', 'Priority entry for your group'],
-    ['priya', 2, 'Comedy set at 9:30, front row is open.', 'Two free tickets'],
-    ['tomas', 5, 'Live band on in 30 minutes.', 'First round on the house'],
+    ['priya', 4, 'Comedy set at 9:30, front row is open.', 'Two free tickets'],
+    ['tomas', 0, 'Live band on in 30 minutes.', 'First round on the house'],
     ['sasha', 6, 'Dance floor just opened downstairs.', 'Free coat check + line skip'],
   ]
 
@@ -591,13 +599,36 @@ async function main() {
     })
   }
 
+  // Resolved history from the venue the business login owns, so its sent-offer
+  // list is not just two live rows.
+  const history: Array<[string, 'DECLINED' | 'EXPIRED', string, string]> = [
+    ['jordan', 'DECLINED', 'Kitchen is open late if you want to eat first.', 'Free starter'],
+    ['lena', 'EXPIRED', 'Corner booth is free for the next hour.', 'Two drinks on us'],
+  ]
+
+  for (const [key, status, message, perk] of history) {
+    const intent = intentByKey.get(key)
+    if (!intent) continue
+    offers.push({
+      businessId: anchor.id,
+      intentId: intent.id,
+      message,
+      perkDescription: perk,
+      doorCode: null,
+      status,
+      createdAtMinutes: status === 'EXPIRED' ? -180 : -70,
+      expiresAtMinutes: status === 'EXPIRED' ? -45 : 20,
+      respondedAtMinutes: status === 'DECLINED' ? -55 : undefined,
+    })
+  }
+
   // Open broadcasts - no intentId, claimable by the first nearby user.
   offers.push(
     {
       businessId: venue(2).id,
       intentId: null,
       message: 'Open table for the next group that walks in. First come, first served.',
-      perkDescription: 'Free round for the first table of 4',
+      perkDescription: 'Free appetizer platter for the first table of 4',
       doorCode: 'OPEN-15',
       status: 'PENDING',
       createdAtMinutes: -10,
