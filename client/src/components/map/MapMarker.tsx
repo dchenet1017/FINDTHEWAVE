@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { createRoot, type Root } from 'react-dom/client'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import mapboxgl, { Map as MapboxMap, Marker } from 'mapbox-gl'
 import {
   createVenueMarkerElement,
@@ -41,8 +41,11 @@ export function MapMarker({
 }: MapMarkerProps) {
   const markerRef = useRef<Marker | null>(null)
   const popupRef = useRef<mapboxgl.Popup | null>(null)
-  const rootRef = useRef<Root | null>(null)
   const elRef = useRef<HTMLDivElement | null>(null)
+  // Popup content is rendered via a portal into this node (not a second
+  // createRoot) so it stays inside the app's React tree and keeps access to
+  // QueryClientProvider, the router, etc.
+  const [popupContainer] = useState(() => document.createElement('div'))
 
   // Destructured so the dependency array stays statically checkable
   const [lng, lat] = position
@@ -66,17 +69,13 @@ export function MapMarker({
 
     if (children) {
       try {
-        const container = document.createElement('div')
-        container.className = 'wavefinder-popup'
-        const root = createRoot(container)
-        root.render(children)
-        rootRef.current = root
+        popupContainer.className = 'wavefinder-popup'
 
         const popup = new mapboxgl.Popup({
           closeButton: false,
           offset: 24,
           maxWidth: '320px',
-        }).setDOMContent(container)
+        }).setDOMContent(popupContainer)
 
         marker.setPopup(popup)
         popupRef.current = popup
@@ -89,7 +88,6 @@ export function MapMarker({
     elRef.current = el
 
     return () => {
-      const root = rootRef.current
       try {
         if (onClick) el.removeEventListener('click', onClick)
         popupRef.current?.remove()
@@ -97,25 +95,14 @@ export function MapMarker({
       } catch {
         // already detached
       }
-      // Unmounting during React's own commit throws, so defer a tick.
-      if (root) {
-        setTimeout(() => {
-          try {
-            root.unmount()
-          } catch {
-            // root was already torn down
-          }
-        }, 0)
-      }
-      rootRef.current = null
       popupRef.current = null
     }
-  }, [map, lng, lat, type, isSponsored, hasActiveOffer, label, onClick, children])
+  }, [map, lng, lat, type, isSponsored, hasActiveOffer, label, onClick, children, popupContainer])
 
   // Selection toggles in place so the animation does not restart
   useEffect(() => {
     if (elRef.current) setVenueMarkerSelected(elRef.current, isSelected)
   }, [isSelected])
 
-  return null
+  return children ? createPortal(children, popupContainer) : null
 }

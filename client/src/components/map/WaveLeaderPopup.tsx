@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import mapboxgl, { Map as MapboxMap } from 'mapbox-gl'
-import { createRoot } from 'react-dom/client'
 import { Star, X, BadgeCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { WaveLeaderDiscovery } from '@/hooks/useWaveLeaders'
@@ -12,6 +12,11 @@ interface WaveLeaderPopupProps {
 }
 
 export function WaveLeaderPopup({ map, waveLeader, onClose }: WaveLeaderPopupProps) {
+  // Rendered via a portal (not a second createRoot) so it stays inside the
+  // app's React tree and keeps access to QueryClientProvider, the router, etc.
+  const [container] = useState(() => document.createElement('div'))
+  const popupRef = useRef<mapboxgl.Popup | null>(null)
+
   useEffect(() => {
     if (!map || !waveLeader) return
 
@@ -19,38 +24,37 @@ export function WaveLeaderPopup({ map, waveLeader, onClose }: WaveLeaderPopupPro
     const lng = waveLeader.longitude
     if (lat == null || lng == null) return
 
-    const container = document.createElement('div')
-    const root = createRoot(container)
-
     const popup = new mapboxgl.Popup({
       closeButton: false,
       offset: 16,
       className: 'wavefinder-popup',
       maxWidth: '320px',
     })
-
-    const handleClose = () => {
-      popup.remove()
-      onClose?.()
-    }
-
-    root.render(
-      <WaveLeaderPopupContent waveLeader={waveLeader} onClose={handleClose} />
-    )
+    popupRef.current = popup
 
     popup.setDOMContent(container).setLngLat([lng, lat]).addTo(map)
 
     return () => {
       try {
         popup.remove()
-        root.unmount()
       } catch {
         // popup was already removed
       }
+      popupRef.current = null
     }
-  }, [map, waveLeader, onClose])
+  }, [map, waveLeader, container])
 
-  return null
+  if (!waveLeader || waveLeader.latitude == null || waveLeader.longitude == null) return null
+
+  const handleClose = () => {
+    popupRef.current?.remove()
+    onClose?.()
+  }
+
+  return createPortal(
+    <WaveLeaderPopupContent waveLeader={waveLeader} onClose={handleClose} />,
+    container
+  )
 }
 
 function WaveLeaderPopupContent({

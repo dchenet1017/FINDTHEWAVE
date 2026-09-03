@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import axios from 'axios'
 import api from '@/lib/axios'
@@ -51,6 +51,10 @@ export const useNearbyCrawls = (lat: number | undefined, lng: number | undefined
     },
     enabled: enabled && lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng),
     staleTime: 60 * 1000,
+    // lat/lng recompute from the map bounds on every pan when the user's
+    // location isn't available, so keep showing the previous results while
+    // the next fetch is in flight instead of flashing the layer empty.
+    placeholderData: keepPreviousData,
   })
 }
 

@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import mapboxgl, { Map as MapboxMap } from 'mapbox-gl'
-import { createRoot } from 'react-dom/client'
 import { ShieldCheck, Star, MapPin, Phone, Globe, X, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -16,11 +16,18 @@ interface BusinessPopupProps {
 }
 
 export function BusinessPopup({ map, business, onClose, userLocation }: BusinessPopupProps) {
+  // The popup content is rendered via a portal (not a second createRoot) so it
+  // stays inside the app's React tree and keeps access to QueryClientProvider,
+  // the router, etc. A detached root has none of that context.
+  const [container] = useState(() => document.createElement('div'))
+  const popupRef = useRef<mapboxgl.Popup | null>(null)
+
   useEffect(() => {
     if (!map || !business) return
 
-    const container = document.createElement('div')
-    const root = createRoot(container)
+    const lng = Number((business as any).longitude ?? (business as any).location?.longitude ?? NaN)
+    const lat = Number((business as any).latitude ?? (business as any).location?.latitude ?? NaN)
+    if (Number.isNaN(lng) || Number.isNaN(lat)) return
 
     const popup = new mapboxgl.Popup({
       closeButton: false,
@@ -28,31 +35,31 @@ export function BusinessPopup({ map, business, onClose, userLocation }: Business
       className: 'wavefinder-popup',
       maxWidth: '360px',
     })
-
-    const handleClose = () => {
-      popup.remove()
-      onClose?.()
-    }
-
-    root.render(<BusinessPopupContent business={business} onClose={handleClose} userLocation={userLocation} />)
-
-    const lng = Number((business as any).longitude ?? (business as any).location?.longitude ?? NaN)
-    const lat = Number((business as any).latitude ?? (business as any).location?.latitude ?? NaN)
-    if (Number.isNaN(lng) || Number.isNaN(lat)) return
+    popupRef.current = popup
 
     popup.setDOMContent(container).setLngLat([lng, lat]).addTo(map)
 
     return () => {
       try {
         popup.remove()
-        root.unmount()
       } catch {
         // popup was already removed
       }
+      popupRef.current = null
     }
-  }, [map, business, onClose])
+  }, [map, business, container])
 
-  return null
+  if (!business) return null
+
+  const handleClose = () => {
+    popupRef.current?.remove()
+    onClose?.()
+  }
+
+  return createPortal(
+    <BusinessPopupContent business={business} onClose={handleClose} userLocation={userLocation} />,
+    container
+  )
 }
 
 function BusinessPopupContent({

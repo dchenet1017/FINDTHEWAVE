@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   businessService,
@@ -30,7 +30,7 @@ export const useBusinesses = (filters: BusinessFilters) =>
       const unwrapped = (data as any)?.data ?? data
       return unwrapped
     },
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
     onError: (error) => handleError(error, 'Failed to load businesses'),
   })
@@ -69,6 +69,12 @@ export const useMapBusinesses = (bounds: MapBounds | null) =>
       return Array.isArray(unwrapped) ? unwrapped : []
     },
     enabled: !!bounds,
+    // Bounds change (a new object) on every map pan/zoom, so this query key
+    // changes constantly. Without keeping the previous page's markers on
+    // screen while the next bounds fetch is in flight, the list of
+    // businesses would briefly go empty and the pins would flicker off and
+    // back on with every map move.
+    placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
     onError: (error) => handleError(error, 'Failed to load map markers'),
   })

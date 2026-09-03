@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import api from '@/lib/axios'
 
 export interface WaveLeaderDiscovery {
@@ -93,6 +93,10 @@ export function useNearbyWaveLeaders(
       return Array.isArray(result) ? result : []
     },
     enabled: !!lat && !!lng && radiusMiles > 0 && enabled,
+    // lat/lng recompute from the map bounds on every pan when the user's
+    // location isn't available, so keep showing the previous results while
+    // the next fetch is in flight instead of flashing the layer empty.
+    placeholderData: keepPreviousData,
   })
 }
 
