@@ -50,6 +50,17 @@ export default {
         success: '#00B894',
         warning: '#FDCB6E',
         danger: '#FF7675',
+        // Marketing-site palette (deep navy + royal blue). Scoped to the
+        // public landing/auth chrome so the in-app theme above is untouched.
+        'wave-bg': '#080B16',
+        'wave-bg-deep': '#04060D',
+        'wave-surface': '#0E1424',
+        'wave-surface-2': '#131A2C',
+        'wave-border': '#1C2439',
+        'wave-blue': '#2563EB',
+        'wave-blue-dark': '#1D4ED8',
+        'wave-blue-light': '#60A5FA',
+        'wave-cyan': '#38BDF8',
       },
     },
   },

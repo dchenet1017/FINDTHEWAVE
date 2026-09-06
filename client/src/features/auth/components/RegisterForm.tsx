@@ -37,7 +37,12 @@ const passwordRequirements = [
   { label: 'One number', regex: /[0-9]/ },
 ]
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  /** Pre-selects the account type, e.g. when a landing page CTA is role-specific. */
+  defaultRole?: RegisterFormData['role']
+}
+
+export function RegisterForm({ defaultRole = 'USER' }: RegisterFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register: registerUser, isRegisterLoading } = useAuth()
@@ -50,7 +55,7 @@ export function RegisterForm() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: 'USER',
+      role: defaultRole,
       terms: false,
     },
   })
