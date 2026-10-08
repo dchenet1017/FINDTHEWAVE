@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
+import rateLimit from '@fastify/rate-limit'
 import { config, warnOnMissingOptionalEnv } from './config'
 import { checkDatabase, connectWithRetry, prisma } from './lib/prisma'
 import { authRoutes } from './modules/auth/auth.routes'
@@ -26,6 +27,9 @@ import { successResponse } from './utils/response'
 
 const server = Fastify({
   logger: config.isDev,
+  // Behind Render's proxy every request arrives from the proxy's address; trust
+  // X-Forwarded-For so rate limits apply per visitor rather than to everyone.
+  trustProxy: config.isProd,
 })
 
 // Register plugins
@@ -54,6 +58,31 @@ await server.register(cors, {
     return cb(new Error('Origin not allowed'), false)
   },
   credentials: true,
+})
+
+// Generous per-IP ceiling: the map and go-out screens poll, and a venue's
+// guests can share one wifi address. Auth routes set much tighter limits.
+await server.register(rateLimit, {
+  global: true,
+  max: config.rateLimit.perMinute,
+  timeWindow: '1 minute',
+  allowList: (request) => request.url === '/health' || request.url.startsWith('/health/'),
+})
+
+// Action endpoints like /publish or /withdraw take no body, but the client's
+// axios instance sends Content-Type: application/json on every request.
+// Fastify's default parser rejects that with a 400; treat it as "no body".
+server.removeContentTypeParser('application/json')
+server.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, body, done) => {
+  const text = (body as string).trim()
+  if (text === '') return done(null, undefined)
+  try {
+    done(null, JSON.parse(text))
+  } catch {
+    const error = new Error('Request body is not valid JSON') as Error & { statusCode: number }
+    error.statusCode = 400
+    done(error, undefined)
+  }
 })
 
 await server.register(cookie)

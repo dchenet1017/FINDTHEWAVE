@@ -3,7 +3,34 @@ import { Outlet } from 'react-router-dom'
 import { BusinessSidebar } from './BusinessSidebar'
 import { BusinessHeader } from './BusinessHeader'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/Sheet'
-import { Waves } from 'lucide-react'
+import { Clock, Waves, XCircle } from 'lucide-react'
+import { useMyBusiness } from '@/hooks/useMyBusiness'
+
+/** Until an admin approves the venue it is off the public map and cannot send offers */
+function ApprovalBanner() {
+  const { data: business } = useMyBusiness()
+  if (!business || business.approvalStatus === 'APPROVED') return null
+
+  const rejected = business.approvalStatus === 'REJECTED'
+  const Icon = rejected ? XCircle : Clock
+  return (
+    <div
+      role="status"
+      className={`flex items-start gap-3 border-b px-4 py-3 text-sm lg:px-6 ${
+        rejected
+          ? 'border-danger/30 bg-danger/10 text-red-200'
+          : 'border-warning/30 bg-warning/10 text-amber-100'
+      }`}
+    >
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>
+        {rejected
+          ? `${business.name} was not approved. Contact the WaveFinder team to find out why and resubmit.`
+          : `${business.name} is awaiting approval. You can set things up now - you'll appear on the live map and can send offers once it's approved.`}
+      </p>
+    </div>
+  )
+}
 
 export function BusinessLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -27,6 +54,8 @@ export function BusinessLayout() {
       >
         {/* Header */}
         <BusinessHeader onMenuClick={() => setMobileMenuOpen(true)} />
+
+        <ApprovalBanner />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">

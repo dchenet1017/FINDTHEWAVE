@@ -60,6 +60,17 @@ export const getMyIntent = async (request: FastifyRequest, reply: FastifyReply) 
 export const getActiveDemand = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const query = (request as any).validatedQuery as ActiveDemandQuery
+    const { role } = request.user as { role: string }
+
+    // Only an admin may look at demand around an arbitrary point. Letting a
+    // venue move the centre would let it sweep small circles across the city
+    // and pin down individual people from the counts.
+    if (role !== 'ADMIN' && (query.lat != null || query.lng != null)) {
+      return reply
+        .code(403)
+        .send(errorResponse('FORBIDDEN', 'Demand is shown around your own venue only'))
+    }
+
     const data = await goOutService.getActiveDemand(
       userId(request),
       query.radius,
@@ -116,6 +127,15 @@ export const respondToOffer = async (
       body
     )
     return reply.send(successResponse(data))
+  } catch (error) {
+    return fail(reply, error)
+  }
+}
+
+/** GET /api/go-out/hotspots - public; aggregated grid cells only */
+export const getHotspots = async (_request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    return reply.send(successResponse(await goOutService.getHotspots()))
   } catch (error) {
     return fail(reply, error)
   }

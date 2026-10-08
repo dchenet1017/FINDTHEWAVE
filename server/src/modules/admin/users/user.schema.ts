@@ -1,11 +1,15 @@
 import { z } from 'zod'
 
+/** The admin tables send an empty string for an unset filter; treat it as no filter. */
+const optionalFilter = <T extends [string, ...string[]]>(values: T) =>
+  z.preprocess((v) => (v === '' ? undefined : v), z.enum(values).optional())
+
 export const getUsersQuerySchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('10'),
   search: z.string().optional(),
-  role: z.enum(['all', 'USER', 'WAVELEADER', 'BUSINESS', 'ADMIN']).optional(),
-  status: z.enum(['all', 'active', 'inactive', 'unverified']).optional(),
+  role: optionalFilter(['all', 'USER', 'WAVELEADER', 'BUSINESS', 'ADMIN']),
+  status: optionalFilter(['all', 'active', 'inactive', 'unverified']),
   sortBy: z.string().optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 })

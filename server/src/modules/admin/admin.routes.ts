@@ -5,11 +5,16 @@ import * as businessController from './businesses/business.controller'
 import * as waveLeaderController from './waveleaders/waveleader.controller'
 import * as analyticsController from './analytics/analytics.controller'
 import * as adminCrawlsController from './crawls/admin-crawls.controller'
+import * as adminGoOutController from './go-out/admin-go-out.controller'
+import * as adminDashboardController from './dashboard/admin-dashboard.controller'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
   // Apply auth middleware to all admin routes
   fastify.addHook('preHandler', authenticate)
   fastify.addHook('preHandler', requireAdmin)
+
+  // Admin home page figures
+  fastify.get('/dashboard', adminDashboardController.getDashboard)
 
   // User management routes
   fastify.get('/users', userController.getUsers)
@@ -52,5 +57,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.post('/crawls/:id/publish', adminCrawlsController.publishCrawl)
   fastify.post('/crawls/:id/cancel', adminCrawlsController.cancelCrawl)
   fastify.delete('/crawls/:id', adminCrawlsController.deleteCrawl)
+
+  // Go-out queue oversight
+  fastify.get('/go-out', adminGoOutController.getOverview)
+  fastify.post('/go-out/offers/:id/withdraw', adminGoOutController.withdrawOffer)
 }
 

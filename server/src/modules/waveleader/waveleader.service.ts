@@ -600,13 +600,13 @@ export const waveleaderService = {
     const lng = wl.longitude != null ? Number(wl.longitude) : null
     if (lat == null || lng == null) return []
 
+    // Business coordinates are required columns, so no null filter is needed
+    // (Prisma rejects `not: null` on a non-nullable field).
     const businesses = await prisma.business.findMany({
       where: {
         isActive: true,
-        latitude: { not: null },
-        longitude: { not: null },
+        approvalStatus: 'APPROVED',
       },
-      take: 20,
       select: {
         id: true,
         name: true,
@@ -628,6 +628,8 @@ export const waveleaderService = {
         longitude: Number(b.longitude),
         distance: this._haversineMiles(lat, lng, Number(b.latitude), Number(b.longitude)),
       }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 20)
   },
 
   _haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {

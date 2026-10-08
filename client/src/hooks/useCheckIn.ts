@@ -6,8 +6,14 @@ export const useCheckIn = (businessId?: string, userLocation?: { lat: number; ln
   const queryClient = useQueryClient()
 
   // Check if user can check in
+  // The server refuses check-ins without a location, so only ask once there is
+  // one, and re-ask when it moves (~10m precision keeps GPS jitter from refetching)
+  const locationKey = userLocation
+    ? `${userLocation.lat.toFixed(4)},${userLocation.lng.toFixed(4)}`
+    : null
+
   const { data: canCheckInData, isLoading: checkingCanCheckIn } = useQuery<CanCheckInResponse>({
-    queryKey: ['checkin', 'can-check-in', businessId],
+    queryKey: ['checkin', 'can-check-in', businessId, locationKey],
     queryFn: async () => {
       if (!businessId) return { canCheckIn: false, reason: 'No business ID' }
       try {
@@ -20,7 +26,7 @@ export const useCheckIn = (businessId?: string, userLocation?: { lat: number; ln
         return { canCheckIn: true } // Default to true on error
       }
     },
-    enabled: !!businessId,
+    enabled: !!businessId && !!locationKey,
     staleTime: 30 * 1000, // 30 seconds
   })
 

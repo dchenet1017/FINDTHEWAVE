@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma'
-import { CheckInMethod } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { NotFoundError, BadRequestError } from '../../utils/errors'
 
 const CHECK_IN_RADIUS_METERS = 100 // 100 meters
@@ -80,11 +80,15 @@ async function calculateStreak(userId: string): Promise<number> {
 /**
  * Check if user already checked in today
  */
-async function hasCheckedInToday(userId: string, businessId: string): Promise<boolean> {
+async function hasCheckedInToday(
+  userId: string,
+  businessId: string,
+  db: Prisma.TransactionClient = prisma
+): Promise<boolean> {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const checkIn = await prisma.checkIn.findFirst({
+  const checkIn = await db.checkIn.findFirst({
     where: {
       userId,
       businessId,
@@ -100,11 +104,12 @@ async function hasCheckedInToday(userId: string, businessId: string): Promise<bo
 /**
  * Award points to user
  */
-async function awardPoints(userId: string, basePoints: number, streak: number): Promise<number> {
-  const pointsEarned = basePoints + (streak > 1 ? STREAK_BONUS_POINTS : 0)
-
-  // Update user's reward points
-  await prisma.userReward.upsert({
+async function awardPoints(
+  db: Prisma.TransactionClient,
+  userId: string,
+  pointsEarned: number
+): Promise<void> {
+  await db.userReward.upsert({
     where: { userId },
     create: {
       userId,
@@ -121,8 +126,6 @@ async function awardPoints(userId: string, basePoints: number, streak: number): 
       },
     },
   })
-
-  return pointsEarned
 }
 
 export const checkInService = {
@@ -173,28 +176,22 @@ export const checkInService = {
       }
     }
 
-    // Check distance if location provided
-    if (userLat !== undefined && userLng !== undefined) {
-      const withinRange = isWithinRange(
-        userLat,
-        userLng,
-        business.latitude,
-        business.longitude
-      )
+    // Mirrors checkIn(): no location, no check-in
+    if (userLat === undefined || userLng === undefined) {
+      return {
+        canCheckIn: false,
+        reason: 'Location needed',
+      }
+    }
 
-      if (!withinRange) {
-        const distance = calculateDistance(
-          userLat,
-          userLng,
-          business.latitude,
-          business.longitude
-        )
+    const businessLat = Number(business.latitude)
+    const businessLng = Number(business.longitude)
 
-        return {
-          canCheckIn: false,
-          reason: 'Too far away',
-          distance: Math.round(distance),
-        }
+    if (!isWithinRange(userLat, userLng, businessLat, businessLng)) {
+      return {
+        canCheckIn: false,
+        reason: 'Too far away',
+        distance: Math.round(calculateDistance(userLat, userLng, businessLat, businessLng)),
       }
     }
 
@@ -206,13 +203,7 @@ export const checkInService = {
   /**
    * Perform check-in
    */
-  async checkIn(
-    userId: string,
-    businessId: string,
-    method: CheckInMethod = 'GEOFENCE',
-    userLat?: number,
-    userLng?: number
-  ) {
+  async checkIn(userId: string, businessId: string, userLat?: number, userLng?: number) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: {
@@ -231,66 +222,53 @@ export const checkInService = {
       throw new BadRequestError('Business location not available')
     }
 
-    // Validate distance if location provided
-    if (userLat !== undefined && userLng !== undefined) {
-      const withinRange = isWithinRange(
-        userLat,
-        userLng,
-        business.latitude,
-        business.longitude
+    // Points are only earned in person, so a check-in without a location is
+    // refused rather than waved through.
+    if (userLat === undefined || userLng === undefined) {
+      throw new BadRequestError('Turn on location services to check in')
+    }
+
+    const businessLat = Number(business.latitude)
+    const businessLng = Number(business.longitude)
+
+    if (!isWithinRange(userLat, userLng, businessLat, businessLng)) {
+      const distance = calculateDistance(userLat, userLng, businessLat, businessLng)
+      throw new BadRequestError(
+        `You are too far away (${Math.round(distance)}m). Please move closer to check in.`
       )
-
-      if (!withinRange) {
-        const distance = calculateDistance(
-          userLat,
-          userLng,
-          business.latitude,
-          business.longitude
-        )
-        throw new BadRequestError(
-          `You are too far away (${Math.round(distance)}m). Please move closer to check in.`
-        )
-      }
     }
 
-    // Check if already checked in today
-    const alreadyCheckedIn = await hasCheckedInToday(userId, businessId)
-    if (alreadyCheckedIn) {
-      throw new BadRequestError('You have already checked in at this location today')
-    }
-
-    // Calculate streak
     const streak = await calculateStreak(userId)
+    const pointsEarned = BASE_POINTS + (streak > 1 ? STREAK_BONUS_POINTS : 0)
 
-    // Award points
-    const pointsEarned = await awardPoints(userId, BASE_POINTS, streak)
+    // The check-in row and its points land together or not at all. The
+    // advisory lock serializes concurrent attempts for this user + venue, so a
+    // double tap cannot slip two check-ins past the once-a-day guard.
+    const { checkIn, totalPoints } = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`checkin:${userId}:${businessId}`}))`
 
-    // Create check-in record
-    const checkIn = await prisma.checkIn.create({
-      data: {
-        userId,
-        businessId,
-        method,
-        points: pointsEarned,
-      },
-      include: {
-        business: {
-          select: {
-            id: true,
-            name: true,
-            logo: true,
-          },
+      if (await hasCheckedInToday(userId, businessId, tx)) {
+        throw new BadRequestError('You have already checked in at this location today')
+      }
+
+      const checkIn = await tx.checkIn.create({
+        data: {
+          userId,
+          businessId,
+          method: 'GEOFENCE',
+          points: pointsEarned,
         },
-      },
-    })
+      })
 
-    // Get total points
-    const userReward = await prisma.userReward.findUnique({
-      where: { userId },
-      select: { points: true },
-    })
+      await awardPoints(tx, userId, pointsEarned)
 
-    const totalPoints = userReward?.points || 0
+      const userReward = await tx.userReward.findUnique({
+        where: { userId },
+        select: { points: true },
+      })
+
+      return { checkIn, totalPoints: userReward?.points || 0 }
+    })
 
     return {
       checkIn: {
@@ -318,7 +296,6 @@ export const checkInService = {
             id: true,
             name: true,
             type: true,
-            logo: true,
             city: true,
             state: true,
           },

@@ -109,6 +109,9 @@ model User {
   locationLat            Float?
   locationLng            Float?
   locationLabel          String?
+  /// Account settings page values (privacy, notification, display choices),
+  /// stored as the user saved them and merged over defaults on read
+  settings               Json?
 
   // Relations
   waveLeader           WaveLeader?
@@ -741,10 +744,15 @@ model BusinessOffer {
   expiresAt   DateTime
   respondedAt DateTime?
 
+  /// Set on a user's private DECLINED copy of a broadcast. Declining must not
+  /// touch the broadcast itself, which stays open for everyone else.
+  sourceOfferId String?
+
   business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   intent   GoOutIntent? @relation(fields: [intentId], references: [id], onDelete: Cascade)
 
   @@index([intentId, status])
+  @@index([sourceOfferId])
   @@index([businessId, createdAt])
   @@index([status, expiresAt])
 }

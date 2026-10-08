@@ -17,7 +17,7 @@ export default function WaveLeaderDetail() {
 
   const { data: waveLeader, isLoading } = useQuery({
     queryKey: ['admin', 'waveleader', id],
-    queryFn: () => adminService.getWaveLeader(id!),
+    queryFn: async () => (await adminService.getWaveLeader(id!)).data.data,
     enabled: !!id,
   })
 

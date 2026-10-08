@@ -1,19 +1,10 @@
 import { prisma } from '../../lib/prisma'
 import { ApprovalStatus, BusinessType, Prisma } from '@prisma/client'
 import { ForbiddenError, NotFoundError } from '../../utils/errors'
+import { postgisAvailable } from '../../lib/postgis'
 
 const advertisementRepo = prisma.advertisement as any
 
-let postgisEnabled = false
-const ensurePostgis = async () => {
-  if (postgisEnabled) return
-  try {
-    await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS postgis')
-    postgisEnabled = true
-  } catch (err) {
-    console.error('PostGIS enable failed:', err)
-  }
-}
 
 function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8
@@ -43,16 +34,19 @@ async function getActiveAdsForBusinesses(businessIds: string[]) {
   })
 }
 
-async function trackAdImpressions(ads: any[]) {
+/**
+ * One UPDATE for the whole page of results, not one per ad, and not awaited:
+ * the map polls, and holding every response for analytics writes made the
+ * busiest endpoints the slowest under load.
+ */
+function trackAdImpressions(ads: any[]) {
   if (!ads.length) return
-  await Promise.all(
-    ads.map((ad) =>
-      advertisementRepo.update({
-        where: { id: ad.id },
-        data: { impressions: { increment: 1 } },
-      }).catch(() => null)
-    )
-  )
+  advertisementRepo
+    .updateMany({
+      where: { id: { in: ads.map((ad) => ad.id) } },
+      data: { impressions: { increment: 1 } },
+    })
+    .catch((err: unknown) => console.error('Ad impression tracking failed:', err))
 }
 
 async function attachSponsorship<T extends { id: string }>(items: T[]) {
@@ -61,7 +55,7 @@ async function attachSponsorship<T extends { id: string }>(items: T[]) {
   for (const ad of ads) {
     if (!adByBusinessId.has(ad.businessId)) adByBusinessId.set(ad.businessId, ad)
   }
-  await trackAdImpressions([...adByBusinessId.values()])
+  trackAdImpressions([...adByBusinessId.values()])
   return items
     .map((item) => {
       const activeAd = adByBusinessId.get(item.id) || null
@@ -80,6 +74,14 @@ async function attachSponsorship<T extends { id: string }>(items: T[]) {
     })
     .sort((a: any, b: any) => Number(Boolean(b.isSponsored)) - Number(Boolean(a.isSponsored)))
 }
+
+/** What the public may see: approved by an admin and not switched off. */
+const PUBLICLY_VISIBLE = {
+  approvalStatus: ApprovalStatus.APPROVED,
+  isActive: true,
+} satisfies Prisma.BusinessWhereInput
+
+const PUBLICLY_VISIBLE_SQL = `b."approvalStatus" = 'APPROVED' AND b."isActive" = true`
 
 interface ListParams {
   page?: number
@@ -124,7 +126,7 @@ export const businessService = {
 
     const skip = (page - 1) * limit
 
-    const where: Prisma.BusinessWhereInput = {}
+    const where: Prisma.BusinessWhereInput = { ...PUBLICLY_VISIBLE }
 
     if (search) {
       where.OR = [
@@ -143,10 +145,6 @@ export const businessService = {
       } else {
         where.type = type as BusinessType
       }
-    }
-
-    if (status && status !== '') {
-      where.approvalStatus = status as ApprovalStatus
     }
 
     if (city) where.city = { contains: city, mode: 'insensitive' }
@@ -169,7 +167,7 @@ export const businessService = {
       orderBy: { [sortField]: sortOrder },
       include: {
         user: {
-          select: { id: true, email: true, firstName: true, lastName: true, avatar: true },
+          select: { id: true, firstName: true, lastName: true, avatar: true },
         },
         _count: { select: { promotions: true, events: true, checkIns: true } },
       },
@@ -190,7 +188,8 @@ export const businessService = {
     const { lat, lng, radius = 5, types, limit = 50 } = params
 
     try {
-      await ensurePostgis()
+      // Without PostGIS, go straight to the bounding-box fallback below
+      if (!(await postgisAvailable())) throw new Error('PostGIS unavailable')
       const radiusMeters = radius * 1609.34
       const typeFilter = types && types.length ? `AND b."type" IN (${types.map((_, i) => `$${i + 4}`).join(',')})` : ''
       const bindings: any[] = [lng, lat, radiusMeters]
@@ -210,6 +209,7 @@ export const businessService = {
         ST_MakePoint($1, $2)::geography,
         $3
       )
+      AND ${PUBLICLY_VISIBLE_SQL}
       ${typeFilter}
       ORDER BY distance ASC
       LIMIT ${limit}
@@ -233,6 +233,7 @@ export const businessService = {
       const deg = radius / 69.0 // rough miles to degrees
       const businesses = await prisma.business.findMany({
         where: {
+          ...PUBLICLY_VISIBLE,
           latitude: { gte: lat - deg, lte: lat + deg },
           longitude: { gte: lng - deg, lte: lng + deg },
           ...(types && types.length ? { type: { in: types as BusinessType[] } } : {}),
@@ -260,8 +261,8 @@ export const businessService = {
   async searchBusinesses(searchTerm: string, location?: { lat: number; lng: number }) {
     if (!searchTerm) return []
 
-    if (location) {
-      await ensurePostgis()
+    // Distance-ordered search needs PostGIS; otherwise use the plain search below
+    if (location && (await postgisAvailable())) {
       const { lat, lng } = location
       const results = await prisma.$queryRawUnsafe<any[]>(
         `
@@ -274,6 +275,9 @@ export const businessService = {
         FROM "Business" b
         WHERE (
           b.name ILIKE $3 OR b.description ILIKE $3 OR b.city ILIKE $3 OR b.state ILIKE $3
+        )
+        AND (
+          ${PUBLICLY_VISIBLE_SQL}
         )
         ORDER BY distance ASC
         LIMIT 50
@@ -293,6 +297,7 @@ export const businessService = {
 
     const results = await prisma.business.findMany({
       where: {
+        ...PUBLICLY_VISIBLE,
         OR: [
           { name: { contains: searchTerm, mode: 'insensitive' } },
           { description: { contains: searchTerm, mode: 'insensitive' } },
@@ -309,6 +314,7 @@ export const businessService = {
     const { north, south, east, west } = bounds
     const results = await prisma.business.findMany({
       where: {
+        ...PUBLICLY_VISIBLE,
         latitude: { gte: south, lte: north },
         longitude: { gte: west, lte: east },
       },
@@ -329,16 +335,17 @@ export const businessService = {
   async getBusinessTypeCounts() {
     const groups = await prisma.business.groupBy({
       by: ['type'],
+      where: PUBLICLY_VISIBLE,
       _count: { _all: true },
     })
     return groups.map((g) => ({ type: g.type, count: g._count._all }))
   },
 
   async getBusinessById(id: string) {
-    const business = await prisma.business.findUnique({
-      where: { id },
+    const business = await prisma.business.findFirst({
+      where: { id, ...PUBLICLY_VISIBLE },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, avatar: true } },
+        user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
         promotions: true,
       },
     })
@@ -424,10 +431,13 @@ export const businessService = {
       throw new ForbiddenError('You do not own this business')
     }
 
+    // Business has no email column; the schema accepts one but it is not stored
+    const { email: _email, ...fields } = data
+
     return prisma.business.update({
       where: { id },
       data: {
-        ...data,
+        ...fields,
         latitude: data.latitude !== undefined ? new Prisma.Decimal(data.latitude) : undefined,
         longitude: data.longitude !== undefined ? new Prisma.Decimal(data.longitude) : undefined,
       },

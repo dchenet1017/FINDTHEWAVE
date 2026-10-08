@@ -23,6 +23,7 @@ import { useNearbyCrawls } from '@/hooks/useCrawls'
 import { useMapStore } from '@/store/mapStore'
 import { useFavorites } from '@/hooks/useUserFavorites'
 import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
+import { DemandHotspotLayer } from '@/components/map/DemandHotspotLayer'
 import { getCurrentPosition } from '@/lib/mapbox'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
@@ -295,6 +296,9 @@ export default function UserMapPage() {
         >
           {(map) => (
             <>
+              {/* Where people want to go out right now, under the venue pins */}
+              <DemandHotspotLayer map={map} />
+
               {/* Business markers */}
               <BusinessMarkerLayer
                 map={map}

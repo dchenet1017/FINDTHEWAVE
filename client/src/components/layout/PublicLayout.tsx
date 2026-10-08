@@ -30,22 +30,15 @@ const FOOTER_COLUMNS = [
       { label: 'Wave Leaders', to: '/become-waveleader' },
     ],
   },
+  // Company / Support columns (About, Careers, Help, Contact, Privacy) come back
+  // once those pages exist - until then they only led to the 404 page.
   {
-    heading: 'Company',
+    heading: 'Explore',
     links: [
-      { label: 'About Us', to: '/about' },
-      { label: 'Careers', to: '/careers' },
-      { label: 'Press', to: '/blog' },
-      { label: 'Partners', to: '/communities' },
-    ],
-  },
-  {
-    heading: 'Support',
-    links: [
-      { label: 'Help Center', to: '/help' },
-      { label: 'Contact Us', to: '/contact' },
-      { label: 'Status', to: '/help' },
-      { label: 'Privacy Policy', to: '/privacy' },
+      { label: 'Live Map', to: '/map' },
+      { label: 'Events', to: '/events' },
+      { label: 'Crawls', to: '/crawls' },
+      { label: 'Wave Leaders', to: '/waveleaders' },
     ],
   },
 ]
@@ -228,7 +221,7 @@ export function PublicLayout() {
       </main>
 
       <footer className="border-t border-wave-border bg-wave-bg-deep">
-        <div className="container mx-auto grid gap-10 px-4 py-12 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_minmax(0,1.2fr)]">
+        <div className="container mx-auto grid gap-10 px-4 py-12 md:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))_minmax(0,1.2fr)]">
           <div>
             <Link to="/" className="flex items-center gap-2">
               <WaveMark />

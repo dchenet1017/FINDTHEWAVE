@@ -12,6 +12,8 @@ interface OnboardingShellProps {
   title?: string
   subtitle?: string
   children: ReactNode
+  /** Defaults to the consumer wizard's length */
+  totalSteps?: number
   /** Pinned to the bottom of the viewport, above the safe area */
   footer?: ReactNode
 }
@@ -24,6 +26,7 @@ export function OnboardingShell({
   subtitle,
   children,
   footer,
+  totalSteps = TOTAL_STEPS,
 }: OnboardingShellProps) {
   return (
     <div className="flex min-h-full flex-col px-6 pb-8 pt-6 sm:px-8">
@@ -48,11 +51,11 @@ export function OnboardingShell({
               className="flex flex-1 gap-1.5"
               role="progressbar"
               aria-valuemin={1}
-              aria-valuemax={TOTAL_STEPS}
+              aria-valuemax={totalSteps}
               aria-valuenow={step}
-              aria-label={`Step ${step} of ${TOTAL_STEPS}`}
+              aria-label={`Step ${step} of ${totalSteps}`}
             >
-              {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+              {Array.from({ length: totalSteps }, (_, i) => (
                 <span
                   key={i}
                   className={cn(
@@ -63,7 +66,7 @@ export function OnboardingShell({
               ))}
             </div>
             <span className="shrink-0 text-xs font-medium tabular-nums text-gray-500">
-              {step}/{TOTAL_STEPS}
+              {step}/{totalSteps}
             </span>
           </div>
         )}

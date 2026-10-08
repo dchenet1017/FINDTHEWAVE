@@ -116,10 +116,23 @@ export const businessController = {
 
   create: async (request: AuthenticatedRequest, reply: FastifyReply) => {
     try {
+      // Creating a business switches the account's role to BUSINESS, so it is
+      // limited to roles that can safely become one - an admin or wave leader
+      // would silently lose their own role.
+      if (request.user.role !== 'USER' && request.user.role !== 'BUSINESS') {
+        return reply
+          .code(403)
+          .send(errorResponse('FORBIDDEN', 'This account type cannot register a business'))
+      }
+
       const data = (request as any).validatedBody
       const business = await businessService.createBusiness(request.user.userId, data)
       return reply.code(201).send(successResponse(business))
     } catch (error: any) {
+      // One business per account (Business.userId is unique)
+      if (error?.code === 'P2002') {
+        return reply.code(409).send(errorResponse('CONFLICT', 'This account already has a business'))
+      }
       return reply.code(500).send(errorResponse('INTERNAL_ERROR', error.message))
     }
   },

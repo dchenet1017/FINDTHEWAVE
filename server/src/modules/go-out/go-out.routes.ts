@@ -26,6 +26,9 @@ export default async function goOutRoutes(fastify: FastifyInstance) {
    */
   fastify.get('/active-venues', goOutController.getActiveVenues)
 
+  /** Public: demand hotspots for the map pulse, k-anonymous grid cells only */
+  fastify.get('/hotspots', goOutController.getHotspots)
+
   await fastify.register(async (scoped) => {
     scoped.addHook('preHandler', authenticate)
 

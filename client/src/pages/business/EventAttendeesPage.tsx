@@ -116,6 +116,13 @@ export default function EventAttendeesPage() {
     })
   }
 
+  /** Header checkbox: select every visible row, or clear when all are selected */
+  const toggleAll = () => {
+    setSelected((prev) =>
+      prev.size === filtered.length ? new Set() : new Set(filtered.map((r) => r.id))
+    )
+  }
+
   const selectedRows = filtered.filter((r) => selected.has(r.id))
 
   const bulkMailto = () => {

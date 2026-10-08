@@ -97,7 +97,7 @@ export interface BusinessesResponse {
 export const adminService = {
   // Users
   getUsers: (filters: UserFilters) =>
-    api.get<UsersResponse>('/admin/users', { params: filters }),
+    api.get<{ success: boolean; data: UsersResponse }>('/admin/users', { params: filters }),
 
   getUser: (id: string) => api.get<User>(`/admin/users/${id}`),
 
@@ -115,9 +115,10 @@ export const adminService = {
 
   // Businesses
   getBusinesses: (filters: BusinessFilters) =>
-    api.get<BusinessesResponse>('/admin/businesses', { params: filters }),
+    api.get<{ success: boolean; data: BusinessesResponse }>('/admin/businesses', { params: filters }),
 
-  getBusiness: (id: string) => api.get<Business>(`/admin/businesses/${id}`),
+  getBusiness: (id: string) =>
+    api.get<{ success: boolean; data: Business }>(`/admin/businesses/${id}`),
 
   updateBusiness: (id: string, data: any) =>
     api.patch<Business>(`/admin/businesses/${id}`, data),
@@ -135,7 +136,7 @@ export const adminService = {
     api.get('/admin/waveleaders', { params: filters }),
 
   getWaveLeader: (id: string) =>
-    api.get(`/admin/waveleaders/${id}`),
+    api.get<{ success: boolean; data: any }>(`/admin/waveleaders/${id}`),
 
   updateWaveLeader: (id: string, data: any) =>
     api.patch(`/admin/waveleaders/${id}`, data),

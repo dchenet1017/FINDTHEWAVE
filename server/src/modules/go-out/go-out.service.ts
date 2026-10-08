@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma'
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors'
 import { haversineMiles } from '../../lib/geo'
+import { postgisAvailable } from '../../lib/postgis'
 import {
   DEFAULT_INTENT_MINUTES,
   DEFAULT_OFFER_MINUTES,
@@ -12,16 +13,6 @@ import {
 
 const MILES_TO_METERS = 1609.344
 
-let postgisEnabled = false
-async function ensurePostgis() {
-  if (postgisEnabled) return
-  try {
-    await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS postgis')
-    postgisEnabled = true
-  } catch (err) {
-    console.error('PostGIS enable failed, falling back to haversine:', err)
-  }
-}
 
 interface NearbyIntentRow {
   id: string
@@ -49,10 +40,9 @@ async function findNearbyIntents(
   lng: number,
   radiusMiles: number
 ): Promise<NearbyIntentRow[]> {
-  await ensurePostgis()
   const now = new Date()
 
-  if (postgisEnabled) {
+  if (await postgisAvailable()) {
     try {
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `
@@ -125,8 +115,28 @@ async function findNearbyIntents(
     .sort((a, b) => a.distanceMiles - b.distanceMiles)
 }
 
-/** Lazily retire intents and offers whose window has passed. */
-async function expireStale() {
+/**
+ * How often the lazy sweep may run. Every go-out request used to issue two
+ * UPDATEs, including the public map badge endpoint, which made writes scale
+ * with page views. Reads that matter already filter on expiresAt themselves,
+ * so a sweep that is a few seconds late changes nothing a user can see.
+ */
+const SWEEP_INTERVAL_MS = 15_000
+let lastSweep = 0
+let sweeping: Promise<void> | null = null
+
+function expireStale(): Promise<void> {
+  if (sweeping) return sweeping
+  if (Date.now() - lastSweep < SWEEP_INTERVAL_MS) return Promise.resolve()
+  lastSweep = Date.now()
+  sweeping = sweepExpired().finally(() => {
+    sweeping = null
+  })
+  return sweeping
+}
+
+/** Retire intents and offers whose window has passed. */
+async function sweepExpired() {
   const now = new Date()
   await prisma.goOutIntent.updateMany({
     where: { status: 'ACTIVE', expiresAt: { lte: now } },
@@ -274,7 +284,7 @@ export async function getMyIntent(userId: string) {
   await expireStale()
 
   const intent = await prisma.goOutIntent.findFirst({
-    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] } },
+    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] }, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -370,6 +380,12 @@ export async function sendOffer(requestingUserId: string, input: SendOfferInput)
   await expireStale()
   const business = await requireBusiness(requestingUserId)
 
+  // An unreviewed venue is not on the public map, so it must not be able to
+  // reach people's inboxes either.
+  if (business.approvalStatus !== 'APPROVED' || !business.isActive) {
+    throw new ForbiddenError('Your venue needs to be approved before it can send offers')
+  }
+
   const expiresAt = new Date(
     Date.now() + (input.expiresInMinutes ?? DEFAULT_OFFER_MINUTES) * 60 * 1000
   )
@@ -434,6 +450,21 @@ export async function sendOffer(requestingUserId: string, input: SendOfferInput)
 /** How far a venue's open broadcast reaches. */
 const BROADCAST_RADIUS_MILES = 10
 
+function isWithinBroadcastReach(
+  intent: { latitude: number; longitude: number },
+  business: { latitude: unknown; longitude: unknown } | null
+) {
+  if (business?.latitude == null || business?.longitude == null) return false
+  return (
+    haversineMiles(
+      intent.latitude,
+      intent.longitude,
+      Number(business.latitude),
+      Number(business.longitude)
+    ) <= BROADCAST_RADIUS_MILES
+  )
+}
+
 /**
  * GET /my-offers
  * Offers waiting on the caller's live intent, plus open broadcasts from venues
@@ -443,7 +474,7 @@ export async function getMyOffers(userId: string) {
   await expireStale()
 
   const intent = await prisma.goOutIntent.findFirst({
-    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] } },
+    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] }, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -463,17 +494,15 @@ export async function getMyOffers(userId: string) {
     take: 50,
   })
 
-  const nearbyBroadcasts = broadcasts.filter((o) => {
-    if (o.business?.latitude == null || o.business?.longitude == null) return false
-    return (
-      haversineMiles(
-        intent.latitude,
-        intent.longitude,
-        Number(o.business.latitude),
-        Number(o.business.longitude)
-      ) <= BROADCAST_RADIUS_MILES
-    )
-  })
+  // Broadcasts this user already turned down live on as their private DECLINED
+  // copy (in `targeted`); don't offer the original again.
+  const declined = new Set(
+    targeted.map((o) => o.sourceOfferId).filter((id): id is string => !!id)
+  )
+
+  const nearbyBroadcasts = broadcasts.filter(
+    (o) => !declined.has(o.id) && isWithinBroadcastReach(intent, o.business)
+  )
 
   const offers = [...targeted, ...nearbyBroadcasts]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -491,7 +520,7 @@ export async function respondToOffer(
   await expireStale()
 
   const intent = await prisma.goOutIntent.findFirst({
-    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] } },
+    where: { userId, status: { in: ['ACTIVE', 'CLAIMED'] }, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -506,13 +535,25 @@ export async function respondToOffer(
 
   if (!offer) throw new NotFoundError('Offer not found')
 
-  // Targeted offers belong to one intent; broadcasts are open until claimed.
-  if (offer.intentId && offer.intentId !== intent.id) {
-    throw new ForbiddenError('This offer was not sent to you')
+  // Checked first: a broadcast someone else just claimed now carries their
+  // intentId, and the person who lost the race should hear "already taken",
+  // not "this offer was not sent to you".
+  if (offer.status !== 'PENDING') {
+    throw new BadRequestError(
+      offer.status === 'ACCEPTED' && offer.intentId !== intent.id
+        ? 'Someone else just claimed this offer'
+        : `This offer is already ${offer.status.toLowerCase()}`
+    )
   }
 
-  if (offer.status !== 'PENDING') {
-    throw new BadRequestError(`This offer is already ${offer.status.toLowerCase()}`)
+  // Targeted offers belong to one intent; broadcasts are open until claimed,
+  // but only to people within reach of the venue.
+  const isBroadcast = offer.intentId === null
+  if (!isBroadcast && offer.intentId !== intent.id) {
+    throw new ForbiddenError('This offer was not sent to you')
+  }
+  if (isBroadcast && !isWithinBroadcastReach(intent, offer.business)) {
+    throw new ForbiddenError('This offer is not available where you are')
   }
 
   if (offer.expiresAt.getTime() <= Date.now()) {
@@ -524,10 +565,45 @@ export async function respondToOffer(
   }
 
   if (input.action === 'DECLINE') {
-    const updated = await prisma.businessOffer.update({
+    const now = new Date()
+
+    if (isBroadcast) {
+      // A broadcast is shared, so the decline is recorded as this user's own
+      // DECLINED copy and the original stays open for everyone else.
+      const existing = await prisma.businessOffer.findFirst({
+        where: { sourceOfferId: offer.id, intentId: intent.id },
+        include: { business: { select: offerBusinessSelect } },
+      })
+      const declined =
+        existing ??
+        (await prisma.businessOffer.create({
+          data: {
+            businessId: offer.businessId,
+            intentId: intent.id,
+            sourceOfferId: offer.id,
+            message: offer.message,
+            perkDescription: offer.perkDescription,
+            status: 'DECLINED',
+            expiresAt: offer.expiresAt,
+            respondedAt: now,
+          },
+          include: { business: { select: offerBusinessSelect } },
+        }))
+      return {
+        offer: serializeOffer(declined, { includeDoorCode: false }),
+        intent: serializeIntent(intent),
+      }
+    }
+
+    const { count } = await prisma.businessOffer.updateMany({
+      where: { id: offer.id, status: 'PENDING' },
+      data: { status: 'DECLINED', respondedAt: now },
+    })
+    if (count === 0) {
+      throw new BadRequestError('This offer is no longer available')
+    }
+    const updated = await prisma.businessOffer.findUniqueOrThrow({
       where: { id: offer.id },
-      // Claim the row on decline too, so a declined broadcast stops coming back.
-      data: { status: 'DECLINED', respondedAt: new Date(), intentId: intent.id },
       include: { business: { select: offerBusinessSelect } },
     })
     return {
@@ -536,24 +612,47 @@ export async function respondToOffer(
     }
   }
 
-  // Accept: claim the offer and the intent together, so a broadcast cannot be
-  // taken twice and the user stops receiving new offers.
-  const [updatedOffer, updatedIntent] = await prisma.$transaction([
-    prisma.businessOffer.update({
-      where: { id: offer.id },
-      data: { status: 'ACCEPTED', respondedAt: new Date(), intentId: intent.id },
-      include: { business: { select: offerBusinessSelect } },
-    }),
-    prisma.goOutIntent.update({
-      where: { id: intent.id },
+  // Accept: claim the offer and the intent together. Both claims are
+  // conditional updates, so when two people race for one broadcast - or one
+  // person taps two offers at once - exactly one wins and the rest roll back.
+  const { updatedOffer, updatedIntent } = await prisma.$transaction(async (tx) => {
+    const now = new Date()
+
+    const intentClaim = await tx.goOutIntent.updateMany({
+      where: { id: intent.id, status: 'ACTIVE' },
       data: { status: 'CLAIMED' },
-    }),
+    })
+    if (intentClaim.count === 0) {
+      throw new BadRequestError('You have already accepted an offer for this outing')
+    }
+
+    const offerClaim = await tx.businessOffer.updateMany({
+      where: {
+        id: offer.id,
+        status: 'PENDING',
+        expiresAt: { gt: now },
+        intentId: isBroadcast ? null : intent.id,
+      },
+      data: { status: 'ACCEPTED', respondedAt: now, intentId: intent.id },
+    })
+    if (offerClaim.count === 0) {
+      throw new BadRequestError('Someone else just claimed this offer')
+    }
+
     // Other venues' pending offers for this intent are no longer live.
-    prisma.businessOffer.updateMany({
+    await tx.businessOffer.updateMany({
       where: { intentId: intent.id, status: 'PENDING', id: { not: offer.id } },
       data: { status: 'EXPIRED' },
-    }),
-  ])
+    })
+
+    return {
+      updatedOffer: await tx.businessOffer.findUniqueOrThrow({
+        where: { id: offer.id },
+        include: { business: { select: offerBusinessSelect } },
+      }),
+      updatedIntent: await tx.goOutIntent.findUniqueOrThrow({ where: { id: intent.id } }),
+    }
+  })
 
   return {
     offer: serializeOffer(updatedOffer, { includeDoorCode: true }),
@@ -576,6 +675,54 @@ export async function getSentOffers(requestingUserId: string) {
   return {
     offers: offers.map((o) => serializeOffer(o, { includeDoorCode: true })),
   }
+}
+
+/** ~550 m north-south; wide enough that a cell is a neighbourhood, not a doorway */
+const HOTSPOT_CELL_DEG = 0.005
+/** A cell with fewer hands than this is not shown, so no one can be singled out */
+const HOTSPOT_MIN_HANDS = 3
+
+/**
+ * GET /hotspots - public.
+ *
+ * Where people want to go out right now, for the map's demand pulse. Hands are
+ * snapped to a ~500 m grid and only cells with HOTSPOT_MIN_HANDS or more are
+ * returned, as cell centres with counts - never an individual position.
+ */
+export async function getHotspots() {
+  await expireStale()
+
+  const intents = await prisma.goOutIntent.findMany({
+    where: { status: 'ACTIVE', expiresAt: { gt: new Date() } },
+    select: { latitude: true, longitude: true, partySize: true, vibes: true },
+  })
+
+  const cells = new Map<string, { lat: number; lng: number; hands: number; people: number; vibes: Map<string, number> }>()
+  for (const i of intents) {
+    const lat = (Math.floor(i.latitude / HOTSPOT_CELL_DEG) + 0.5) * HOTSPOT_CELL_DEG
+    const lng = (Math.floor(i.longitude / HOTSPOT_CELL_DEG) + 0.5) * HOTSPOT_CELL_DEG
+    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`
+    const cell = cells.get(key) ?? { lat, lng, hands: 0, people: 0, vibes: new Map() }
+    cell.hands += 1
+    cell.people += i.partySize
+    for (const v of i.vibes) cell.vibes.set(v, (cell.vibes.get(v) ?? 0) + 1)
+    cells.set(key, cell)
+  }
+
+  const hotspots = [...cells.values()]
+    .filter((c) => c.hands >= HOTSPOT_MIN_HANDS)
+    .map((c) => ({
+      latitude: Number(c.lat.toFixed(4)),
+      longitude: Number(c.lng.toFixed(4)),
+      people: c.people,
+      topVibe: [...c.vibes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+      // 1 = warm, 2 = busy, 3 = on fire; drives the pulse size and speed
+      intensity: c.hands >= 15 ? 3 : c.hands >= 7 ? 2 : 1,
+    }))
+    .sort((a, b) => b.people - a.people)
+    .slice(0, 200)
+
+  return { hotspots }
 }
 
 /**

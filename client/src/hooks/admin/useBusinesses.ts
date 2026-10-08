@@ -10,7 +10,7 @@ export const useBusinesses = (filters: BusinessFilters) => {
     queryKey: ['admin', 'businesses', filters],
     queryFn: async () => {
       const { data } = await adminService.getBusinesses(filters)
-      return data
+      return data.data
     },
     staleTime: 30 * 1000, // 30 seconds
   })
@@ -21,7 +21,7 @@ export const useBusiness = (id: string) => {
     queryKey: ['admin', 'businesses', id],
     queryFn: async () => {
       const { data } = await adminService.getBusiness(id)
-      return data
+      return data.data
     },
     enabled: !!id,
   })

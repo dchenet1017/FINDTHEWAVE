@@ -124,6 +124,7 @@ export function useWaveLeaderRegistration() {
       clearDraft()
       toast.success("Application submitted! We'll review it shortly.")
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      queryClient.invalidateQueries({ queryKey: ['waveleader', 'me', 'exists'] })
       navigate('/dashboard')
     },
     onError: (error: Error) => {

@@ -13,40 +13,9 @@ export const useProfile = () => {
         }
         throw new Error('Failed to fetch profile')
       } catch (error) {
-        // Return mock data for development
-        return {
-          id: '1',
-          email: 'user@example.com',
-          firstName: 'John',
-          lastName: 'Doe',
-          phone: '+1234567890',
-          bio: 'Adventure seeker and travel enthusiast',
-          avatar: undefined,
-          isVerified: true,
-          createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          stats: {
-            checkIns: 42,
-            placesVisited: 18,
-            reviewsWritten: 12,
-            bookings: 5,
-            pointsEarned: 2350,
-            memberLevel: 3,
-          },
-          communities: [
-            { id: '1', name: 'Beach Explorers', description: 'For beach lovers', joinedAt: new Date().toISOString() },
-            { id: '2', name: 'Foodies United', description: 'Food enthusiasts', joinedAt: new Date().toISOString() },
-          ],
-          recentReviews: [
-            {
-              id: '1',
-              businessId: '1',
-              businessName: 'Ocean View Bar',
-              rating: 5,
-              comment: 'Amazing atmosphere and great drinks!',
-              createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            },
-          ],
-        }
+        // Never fall back to placeholder data: the profile form would then
+        // offer to save a made-up identity over the real one
+        throw error
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

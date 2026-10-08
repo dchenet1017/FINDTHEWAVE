@@ -5,6 +5,7 @@ import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
 import { Button } from '@/components/ui/Button'
 import type { BookingPaymentDraft } from '@/types/booking-payment'
 import { calculateBookingPrice, formatCurrency, formatTimeRange } from '@/utils/booking'
+import { clearBookingDraft, loadBookingDraft } from '@/utils/bookingDraftStorage'
 
 export default function PaymentPage() {
   const { waveLeaderId } = useParams()

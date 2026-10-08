@@ -34,6 +34,14 @@ export const errorHandler = (
     )
   }
 
+  // Client errors raised by Fastify or its plugins (malformed JSON, body too
+  // large, rate limited...) carry their own 4xx status - don't turn them into 500s
+  const status = (error as FastifyError).statusCode
+  if (status && status >= 400 && status < 500) {
+    const code = status === 429 ? 'RATE_LIMITED' : (error as FastifyError).code || 'BAD_REQUEST'
+    return reply.status(status).send(errorResponse(code, error.message))
+  }
+
   // Default server error
   return reply.status(500).send(
     errorResponse('INTERNAL_ERROR', 'An unexpected error occurred')

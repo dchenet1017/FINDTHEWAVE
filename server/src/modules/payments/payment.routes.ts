@@ -10,7 +10,6 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/webhook',
     {
-      config: { rawBody: true },
       preParsing: async (request, _reply, payload) => {
         const chunks: Buffer[] = []
         for await (const chunk of payload as AsyncIterable<Buffer>) {

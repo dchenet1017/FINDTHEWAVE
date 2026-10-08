@@ -31,6 +31,7 @@ const SERVICE_TYPES = [
 
 export default function BookWaveLeaderPage() {
   const { waveLeaderId } = useParams()
+  const navigate = useNavigate()
   const { data: waveLeader, isLoading } = usePublicWaveLeaderProfile(waveLeaderId)
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)

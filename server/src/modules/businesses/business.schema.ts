@@ -16,11 +16,10 @@ export const createBusinessSchema = z.object({
   images: z.array(z.string().url()).optional().default([]),
 })
 
-export const updateBusinessSchema = createBusinessSchema.partial().extend({
-  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-  isActive: z.boolean().optional(),
-  isVerified: z.boolean().optional(),
-})
+// Approval, verification and active state are admin decisions, made through
+// /api/admin/businesses - an owner must not be able to set them on their own
+// listing. Unknown keys are stripped, so sending them here is a no-op.
+export const updateBusinessSchema = createBusinessSchema.partial()
 
 export const createPromotionSchema = z.object({
   title: z.string().min(2),

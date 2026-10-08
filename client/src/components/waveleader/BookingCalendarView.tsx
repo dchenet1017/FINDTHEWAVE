@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { WaveLeaderBookingClient } from '@/types/booking'
+import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 function bookingStartMs(b: WaveLeaderBookingClient): number {

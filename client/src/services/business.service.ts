@@ -60,6 +60,6 @@ export const businessService = {
     }),
 
   getBusinessTypeCounts: () =>
-    api.get<BusinessTypeCounts[]>('/businesses/type-counts'),
+    api.get<BusinessTypeCounts[]>('/businesses/types/counts'),
 }
 

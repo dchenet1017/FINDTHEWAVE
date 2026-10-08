@@ -177,6 +177,9 @@ export function createVenueMarkerElement(
   if (hasActiveOffer) {
     root.appendChild(createOfferBadge())
   }
+  // The class drives the outward ripple (map.css) that sets a venue running an
+  // offer apart from a sponsored one, whose ring breathes in place
+  root.classList.toggle('wf-venue-marker--live-offer', hasActiveOffer)
 
   setVenueMarkerSelected(root, isSelected)
 
@@ -201,6 +204,7 @@ export function setVenueMarkerSelected(el: HTMLElement, isSelected: boolean) {
  * marker teardown (which would restart every animation on the map).
  */
 export function setVenueMarkerOffer(el: HTMLElement, hasActiveOffer: boolean) {
+  el.classList.toggle('wf-venue-marker--live-offer', hasActiveOffer)
   const existing = el.querySelector('.wf-venue-marker__badge')
   if (hasActiveOffer && !existing) {
     el.appendChild(createOfferBadge())

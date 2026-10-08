@@ -26,6 +26,10 @@ const envSchema = z.object({
    * Off by default: with credentials enabled, that let any app hosted on
    * Render make authenticated cross-origin calls to this API.
    */
+  /** Per-IP requests per minute across the whole API */
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(600),
+  /** Per-IP attempts per minute on login, sign-up and password reset */
+  AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
   ALLOW_ALL_RENDER_ORIGINS: z
     .enum(['true', 'false'])
     .default('false')
@@ -86,6 +90,10 @@ export const config = {
   },
   redis: {
     url: env.REDIS_URL,
+  },
+  rateLimit: {
+    perMinute: env.RATE_LIMIT_PER_MINUTE,
+    authPerMinute: env.AUTH_RATE_LIMIT_PER_MINUTE,
   },
   stripe: {
     secretKey: env.STRIPE_SECRET_KEY,

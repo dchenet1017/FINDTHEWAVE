@@ -42,16 +42,14 @@ export const checkInController = {
   checkIn: async (request: AuthenticatedRequest, reply: FastifyReply) => {
     try {
       const { businessId } = request.params as { businessId: string }
-      const { latitude, longitude, method } = request.body as {
+      const { latitude, longitude } = request.body as {
         latitude?: number
         longitude?: number
-        method?: 'MANUAL' | 'QR_CODE' | 'GEOFENCE'
       }
 
       const result = await checkInService.checkIn(
         request.user.id,
         businessId,
-        method || 'GEOFENCE',
         latitude,
         longitude
       )

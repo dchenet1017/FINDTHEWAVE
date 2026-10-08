@@ -11,7 +11,8 @@ import { Separator } from '@/components/ui/Separator'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
-import { userService } from '@/services/user.service'
+import { userService, type UserSettings } from '@/services/user.service'
+import api from '@/lib/axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export default function SettingsPage() {
@@ -26,33 +27,8 @@ export default function SettingsPage() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['user', 'settings'],
     queryFn: async () => {
-      // Mock settings for now
-      return {
-        privacy: {
-          profileVisibility: 'public' as const,
-          showCheckInHistory: true,
-          allowLocationTracking: true,
-        },
-        notifications: {
-          email: {
-            bookingConfirmations: true,
-            bookingReminders: true,
-            promotionalOffers: false,
-            weeklyDigest: true,
-          },
-          push: {
-            nearbyDeals: true,
-            checkInReminders: false,
-            newWaveLeaders: true,
-          },
-        },
-        preferences: {
-          defaultMapView: 'map' as const,
-          distanceUnit: 'miles' as const,
-          theme: 'dark' as const,
-          language: 'en',
-        },
-      }
+      const { data } = await api.get('/users/me/settings')
+      return data.data as UserSettings
     },
   })
 

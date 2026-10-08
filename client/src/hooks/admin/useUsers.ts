@@ -10,53 +10,8 @@ export const useUsers = (filters: UserFilters) => {
   return useQuery({
     queryKey: ['admin', 'users', filters],
     queryFn: async () => {
-      // TODO: Replace with actual API call
-      // For now, return mock data
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      
-      // Mock data generation
-      const mockUsers = generateMockUsers()
-      let filteredUsers = [...mockUsers]
-
-      // Apply filters
-      if (filters.search) {
-        const search = filters.search.toLowerCase()
-        filteredUsers = filteredUsers.filter(
-          (u) =>
-            u.email.toLowerCase().includes(search) ||
-            u.firstName?.toLowerCase().includes(search) ||
-            u.lastName?.toLowerCase().includes(search)
-        )
-      }
-
-      if (filters.role && filters.role !== '') {
-        filteredUsers = filteredUsers.filter((u) => u.role === filters.role)
-      }
-
-      if (filters.status) {
-        if (filters.status === 'active') {
-          filteredUsers = filteredUsers.filter((u) => u.isActive)
-        } else if (filters.status === 'inactive') {
-          filteredUsers = filteredUsers.filter((u) => !u.isActive)
-        } else if (filters.status === 'unverified') {
-          filteredUsers = filteredUsers.filter((u) => !u.isVerified)
-        }
-      }
-
-      // Pagination
-      const page = filters.page || 1
-      const limit = filters.limit || 10
-      const start = (page - 1) * limit
-      const end = start + limit
-      const paginatedUsers = filteredUsers.slice(start, end)
-
-      return {
-        users: paginatedUsers,
-        total: filteredUsers.length,
-        page,
-        limit,
-        totalPages: Math.ceil(filteredUsers.length / limit),
-      }
+      const { data } = await adminService.getUsers(filters)
+      return data.data
     },
     staleTime: 30 * 1000, // 30 seconds
   })
@@ -138,71 +93,3 @@ export const useBulkUserAction = () => {
     },
   })
 }
-
-// Mock data generator
-function generateMockUsers() {
-  const roles: Array<'USER' | 'WAVELEADER' | 'BUSINESS' | 'ADMIN'> = [
-    'USER',
-    'WAVELEADER',
-    'BUSINESS',
-    'ADMIN',
-  ]
-  const firstNames = [
-    'John',
-    'Jane',
-    'Mike',
-    'Sarah',
-    'David',
-    'Emily',
-    'Chris',
-    'Lisa',
-    'Tom',
-    'Amy',
-  ]
-  const lastNames = [
-    'Doe',
-    'Smith',
-    'Johnson',
-    'Williams',
-    'Brown',
-    'Davis',
-    'Miller',
-    'Wilson',
-    'Moore',
-    'Taylor',
-  ]
-
-  const users = []
-  for (let i = 0; i < 50; i++) {
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
-    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`
-    const role = roles[Math.floor(Math.random() * roles.length)]
-    const isActive = Math.random() > 0.2
-    const isVerified = Math.random() > 0.1
-
-    const createdAt = new Date()
-    createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 365))
-
-    const lastLogin = isActive && Math.random() > 0.3
-      ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
-      : null
-
-    users.push({
-      id: `user-${i}`,
-      email,
-      firstName,
-      lastName,
-      avatar: null,
-      role,
-      isVerified,
-      isActive,
-      createdAt: createdAt.toISOString(),
-      updatedAt: createdAt.toISOString(),
-      lastLogin: lastLogin?.toISOString() || null,
-    })
-  }
-
-  return users
-}
-

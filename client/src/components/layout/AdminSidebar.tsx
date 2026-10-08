@@ -12,7 +12,7 @@ import {
   Star,
   Map as MapIcon,
 } from 'lucide-react'
-import { Waves } from 'lucide-react'
+import { Hand, Waves } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/Separator'
 import { Badge } from '@/components/ui/Badge'
@@ -34,6 +34,11 @@ const navigation: NavItem[] = [
     name: 'Platform Map',
     href: '/admin/map',
     icon: MapIcon,
+  },
+  {
+    name: 'Go-Out Queue',
+    href: '/admin/go-out',
+    icon: Hand,
   },
   {
     name: 'Users',

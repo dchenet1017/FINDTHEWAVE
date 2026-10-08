@@ -1,37 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { Checkbox } from '@/components/ui/Checkbox'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import { ChevronDown, ChevronRight, Building2 } from 'lucide-react'
+import { Building2 } from 'lucide-react'
 import { type Business } from '@/services/admin.service'
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
 
 export const businessColumns: ColumnDef<Business>[] = [
-  {
-    id: 'expand',
-    header: () => null,
-    cell: ({ row }) => {
-      const [isExpanded, setIsExpanded] = useState(false)
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </Button>
-      )
-    },
-    enableSorting: false,
-  },
+  // Actions (View / Approve / Reject) are appended by BusinessManagement,
+  // which owns the approval dialog state
   {
     accessorKey: 'name',
     header: 'Business',
@@ -150,15 +126,6 @@ export const businessColumns: ColumnDef<Business>[] = [
         </span>
       )
     },
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: ({ row }) => {
-      // Actions will be handled in the parent component
-      return null
-    },
-    enableSorting: false,
   },
 ]
 

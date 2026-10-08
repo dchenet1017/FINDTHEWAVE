@@ -10,12 +10,19 @@ import {
 } from './auth.schema'
 import { authenticate, AuthenticatedRequest } from '../../middleware/authenticate'
 import { validate } from '../../middleware/validate'
+import { config } from '../../config'
 
 export async function authRoutes(fastify: FastifyInstance) {
   const authService = new AuthService(fastify)
 
+  // Credential endpoints get a much tighter per-IP limit than the global one,
+  // to slow down password guessing and sign-up spam.
+  const strict = {
+    config: { rateLimit: { max: config.rateLimit.authPerMinute, timeWindow: '1 minute' } },
+  }
+
   // Register
-  fastify.post('/register', async (request, reply) => {
+  fastify.post('/register', strict, async (request, reply) => {
     try {
       const body = registerSchema.parse(request.body)
       const result = await authService.register(body)
@@ -47,7 +54,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   // Login
-  fastify.post('/login', async (request, reply) => {
+  fastify.post('/login', strict, async (request, reply) => {
     try {
       const body = loginSchema.parse(request.body)
       const result = await authService.login(body.email, body.password)
@@ -175,7 +182,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   // Forgot password
-  fastify.post('/forgot-password', async (request, reply) => {
+  fastify.post('/forgot-password', strict, async (request, reply) => {
     try {
       const body = forgotPasswordSchema.parse(request.body)
       const result = await authService.forgotPassword(body.email)
@@ -203,7 +210,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   // Reset password
-  fastify.post('/reset-password', async (request, reply) => {
+  fastify.post('/reset-password', strict, async (request, reply) => {
     try {
       const body = resetPasswordSchema.parse(request.body)
       const result = await authService.resetPassword(body.token, body.password)

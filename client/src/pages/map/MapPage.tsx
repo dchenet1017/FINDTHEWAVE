@@ -12,6 +12,7 @@ import { cn, formatDistance } from '@/lib/utils'
 import { useMapBusinesses } from '@/hooks/useBusinesses'
 import { useMapStore } from '@/store/mapStore'
 import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
+import { DemandHotspotLayer } from '@/components/map/DemandHotspotLayer'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
 
@@ -262,6 +263,9 @@ export default function MapPage() {
           <MapContainer onMapLoad={handleMapLoad} onMoveEnd={handleMoveEnd} interactive>
             {(map) => (
               <>
+                {/* Where people want to go out right now, under the venue pins */}
+                <DemandHotspotLayer map={map} />
+
                 {filteredBusinesses.map((biz) => {
                   const { lat, lng } = getCoords(biz)
                   if (lat === undefined || lng === undefined || Number.isNaN(lat) || Number.isNaN(lng)) return null

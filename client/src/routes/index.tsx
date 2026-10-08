@@ -50,6 +50,7 @@ import AdminEventsPage from '@/pages/admin/content/AdminEventsPage'
 import PromotionsPage from '@/pages/admin/content/PromotionsPage'
 import AdminSettings from '@/pages/admin/settings/AdminSettings'
 import AdminMapPage from '@/pages/admin/AdminMapPage'
+import AdminGoOutPage from '@/pages/admin/AdminGoOutPage'
 
 // Business pages
 import BusinessDashboard from '@/pages/business/BusinessDashboard'
@@ -88,6 +89,8 @@ import PaymentPage from '@/pages/booking/PaymentPage'
 import BookingConfirmationPage from '@/pages/booking/BookingConfirmationPage'
 import WriteReviewPage from '@/pages/booking/WriteReviewPage'
 import { RequireAuthMainLayout } from '@/components/auth/RequireAuthMainLayout'
+import { RequireBusinessProfile, RequireWaveLeaderProfile } from '@/components/auth/RequireRoleProfile'
+import BusinessOnboardingPage from '@/pages/business/BusinessOnboardingPage'
 
 export const router = createBrowserRouter([
   // Public routes
@@ -199,6 +202,7 @@ export const router = createBrowserRouter([
           { path: 'analytics/revenue', element: <RevenueAnalytics /> },
           { path: 'analytics/engagement', element: <EngagementAnalytics /> },
           { path: 'map', element: <AdminMapPage /> },
+          { path: 'go-out', element: <AdminGoOutPage /> },
           { path: 'settings', element: <AdminSettings /> },
         ],
       },
@@ -214,33 +218,40 @@ export const router = createBrowserRouter([
         index: true,
         element: <Navigate to="/business/dashboard" replace />,
       },
+      // Full-screen venue setup for a new business account
+      { path: 'onboarding', element: <BusinessOnboardingPage /> },
       {
-        element: <BusinessLayout />,
+        element: <RequireBusinessProfile />,
         children: [
-          { path: 'dashboard', element: <BusinessDashboard /> },
-          { path: 'analytics', element: <BusinessAnalyticsPage /> },
-          { path: 'map', element: <BusinessMapPage /> },
-          { path: 'ads', element: <AdvertisementsPage /> },
-          { path: 'ads/create', element: <CreateAdPage /> },
-          { path: 'ads/:id/edit', element: <CreateAdPage /> },
-          { path: 'ads/:id/analytics', element: <div className="p-8 text-center text-gray-400">Ad analytics page coming soon</div> },
-          { path: 'events', element: <EventsManagementPage /> },
-          { path: 'events/create', element: <CreateEventPage /> },
-          { path: 'events/:id/edit', element: <CreateEventPage /> },
-          { path: 'events/:id/attendees', element: <EventAttendeesPage /> },
-          { path: 'events/:id/check-in', element: <EventCheckInPage /> },
-          { path: 'crawls', element: <CrawlsManagementPage /> },
-          { path: 'crawls/create', element: <CreateCrawlPage /> },
-          { path: 'crawls/:id/edit', element: <CreateCrawlPage /> },
-          { path: 'crawls/:id/attendees', element: <CrawlAttendeesPage /> },
-          { path: 'crawls/:id/check-in', element: <CrawlStopCheckInPage /> },
-          { path: 'go-out', element: <GoOutQueuePage /> },
-          { path: 'promotions', element: <div className="p-8 text-center text-gray-400">Promotions page coming soon</div> },
-          { path: 'reviews', element: <div className="p-8 text-center text-gray-400">Reviews page coming soon</div> },
-          { path: 'customers', element: <div className="p-8 text-center text-gray-400">Customers page coming soon</div> },
-          { path: 'revenue', element: <div className="p-8 text-center text-gray-400">Revenue page coming soon</div> },
-          { path: 'profile', element: <div className="p-8 text-center text-gray-400">Profile page coming soon</div> },
-          { path: 'settings', element: <div className="p-8 text-center text-gray-400">Settings page coming soon</div> },
+          {
+            element: <BusinessLayout />,
+            children: [
+              { path: 'dashboard', element: <BusinessDashboard /> },
+              { path: 'analytics', element: <BusinessAnalyticsPage /> },
+              { path: 'map', element: <BusinessMapPage /> },
+              { path: 'ads', element: <AdvertisementsPage /> },
+              { path: 'ads/create', element: <CreateAdPage /> },
+              { path: 'ads/:id/edit', element: <CreateAdPage /> },
+              { path: 'ads/:id/analytics', element: <div className="p-8 text-center text-gray-400">Ad analytics page coming soon</div> },
+              { path: 'events', element: <EventsManagementPage /> },
+              { path: 'events/create', element: <CreateEventPage /> },
+              { path: 'events/:id/edit', element: <CreateEventPage /> },
+              { path: 'events/:id/attendees', element: <EventAttendeesPage /> },
+              { path: 'events/:id/check-in', element: <EventCheckInPage /> },
+              { path: 'crawls', element: <CrawlsManagementPage /> },
+              { path: 'crawls/create', element: <CreateCrawlPage /> },
+              { path: 'crawls/:id/edit', element: <CreateCrawlPage /> },
+              { path: 'crawls/:id/attendees', element: <CrawlAttendeesPage /> },
+              { path: 'crawls/:id/check-in', element: <CrawlStopCheckInPage /> },
+              { path: 'go-out', element: <GoOutQueuePage /> },
+              { path: 'promotions', element: <div className="p-8 text-center text-gray-400">Promotions page coming soon</div> },
+              { path: 'reviews', element: <div className="p-8 text-center text-gray-400">Reviews page coming soon</div> },
+              { path: 'customers', element: <div className="p-8 text-center text-gray-400">Customers page coming soon</div> },
+              { path: 'revenue', element: <div className="p-8 text-center text-gray-400">Revenue page coming soon</div> },
+              { path: 'profile', element: <div className="p-8 text-center text-gray-400">Profile page coming soon</div> },
+              { path: 'settings', element: <div className="p-8 text-center text-gray-400">Settings page coming soon</div> },
+            ],
+          },
         ],
       },
     ],
@@ -252,16 +263,21 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute allowedRoles={['WAVELEADER', 'ADMIN']} />,
     children: [
       {
-        element: <WaveLeaderLayout />,
+        element: <RequireWaveLeaderProfile />,
         children: [
-          { path: 'dashboard', element: <WaveLeaderDashboard /> },
-          { path: 'bookings', element: <WaveLeaderBookingsPage /> },
-          { path: 'map', element: <WaveLeaderMapPage /> },
-          { path: 'communities', element: <WaveLeaderCommunitiesPage /> },
-          { path: 'earnings', element: <WaveLeaderEarningsPage /> },
-          { path: 'analytics', element: <WaveLeaderAnalyticsPage /> },
-          { path: 'profile', element: <WaveLeaderProfilePage /> },
-          { path: 'settings', element: <WaveLeaderSettingsPage /> },
+          {
+            element: <WaveLeaderLayout />,
+            children: [
+              { path: 'dashboard', element: <WaveLeaderDashboard /> },
+              { path: 'bookings', element: <WaveLeaderBookingsPage /> },
+              { path: 'map', element: <WaveLeaderMapPage /> },
+              { path: 'communities', element: <WaveLeaderCommunitiesPage /> },
+              { path: 'earnings', element: <WaveLeaderEarningsPage /> },
+              { path: 'analytics', element: <WaveLeaderAnalyticsPage /> },
+              { path: 'profile', element: <WaveLeaderProfilePage /> },
+              { path: 'settings', element: <WaveLeaderSettingsPage /> },
+            ],
+          },
         ],
       },
     ],

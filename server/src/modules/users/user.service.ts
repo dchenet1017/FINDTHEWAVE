@@ -38,6 +38,48 @@ export interface UserSettings {
   }
 }
 
+const DEFAULT_SETTINGS = {
+  privacy: {
+    profileVisibility: 'public',
+    showCheckInHistory: true,
+    allowLocationTracking: false,
+  },
+  notifications: {
+    email: {
+      bookingConfirmations: true,
+      bookingReminders: true,
+      promotionalOffers: false,
+      weeklyDigest: true,
+    },
+    push: {
+      nearbyDeals: true,
+      checkInReminders: false,
+      newWaveLeaders: true,
+    },
+  },
+  preferences: {
+    defaultMapView: 'map',
+    distanceUnit: 'miles',
+    theme: 'dark',
+    language: 'en',
+  },
+} satisfies UserSettings
+
+type ResolvedSettings = typeof DEFAULT_SETTINGS
+
+/** Section-by-section merge; a partial update never wipes sibling values */
+function mergeSettings<T extends UserSettings>(base: T, patch: UserSettings): ResolvedSettings {
+  const b = base as any
+  return {
+    privacy: { ...b.privacy, ...patch.privacy },
+    notifications: {
+      email: { ...b.notifications?.email, ...patch.notifications?.email },
+      push: { ...b.notifications?.push, ...patch.notifications?.push },
+    },
+    preferences: { ...b.preferences, ...patch.preferences },
+  }
+}
+
 /** Shape event + nested business for client EventCard / ticket UIs */
 function serializeUserEventRow(ev: Record<string, any>) {
   const ticketPrice = ev.ticketPrice != null ? Number(ev.ticketPrice) : null
@@ -238,9 +280,18 @@ export const userService = {
    * Update user settings
    */
   async updateSettings(userId: string, settings: UserSettings) {
-    // TODO: Store settings in database (create UserSettings model or JSON field)
-    // For now, return the settings as-is
-    return settings
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { settings: true } })
+    const stored = mergeSettings((user?.settings ?? {}) as UserSettings, settings)
+    const location = settings.privacy?.allowLocationTracking
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        settings: stored as Prisma.InputJsonValue,
+        ...(location !== undefined ? { locationSharingEnabled: location } : {}),
+      },
+    })
+    return this.getSettings(userId)
   },
 
   /**
@@ -706,36 +757,18 @@ export const userService = {
   },
 
   /**
-   * Get user settings
+   * Get user settings: what the user saved, merged over the defaults
    */
-  async getSettings(_userId: string) {
-    // TODO: Store settings in database
-    // For now, return default settings
+  async getSettings(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true, locationSharingEnabled: true },
+    })
+    const merged = mergeSettings(DEFAULT_SETTINGS, (user?.settings ?? {}) as UserSettings)
+    // Onboarding asks the same question; keep the two in step
     return {
-      privacy: {
-        profileVisibility: 'public',
-        showCheckInHistory: true,
-        allowLocationTracking: true,
-      },
-      notifications: {
-        email: {
-          bookingConfirmations: true,
-          bookingReminders: true,
-          promotionalOffers: false,
-          weeklyDigest: true,
-        },
-        push: {
-          nearbyDeals: true,
-          checkInReminders: false,
-          newWaveLeaders: true,
-        },
-      },
-      preferences: {
-        defaultMapView: 'map',
-        distanceUnit: 'miles',
-        theme: 'dark',
-        language: 'en',
-      },
+      ...merged,
+      privacy: { ...merged.privacy, allowLocationTracking: user?.locationSharingEnabled ?? false },
     }
   },
 }

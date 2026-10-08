@@ -191,11 +191,98 @@
   50%      { transform: scale(1.04); opacity: 0.5; }
 }
 
+/* ==========================================================================
+   Three kinds of pulse, so the map reads at a glance:
+     - sponsored venue: a slow ring that breathes in place (above)
+     - venue running a live offer: a ripple that travels outward
+     - demand hotspot: a warm glow where people want to go out; bigger and
+       faster as more hands go up (intensity 1-3)
+   ========================================================================== */
+
+.wf-venue-marker--live-offer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #a29bfe;
+  animation: wf-offer-ripple 2.2s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes wf-offer-ripple {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+/* Hotspots load after the venue pins, so pin them underneath explicitly */
+.mapboxgl-marker.wf-hotspot { z-index: 0; }
+.mapboxgl-marker.wf-venue-marker { z-index: 1; }
+
+.wf-hotspot {
+  --wf-hotspot-size: 56px;
+  --wf-hotspot-speed: 3.4s;
+  position: relative;
+  width: var(--wf-hotspot-size);
+  height: var(--wf-hotspot-size);
+  /* Decoration only - clicks go through to the map and the pins */
+  pointer-events: none;
+}
+
+.wf-hotspot--2 { --wf-hotspot-size: 84px; --wf-hotspot-speed: 2.6s; }
+.wf-hotspot--3 { --wf-hotspot-size: 120px; --wf-hotspot-speed: 1.8s; }
+
+.wf-hotspot__glow,
+.wf-hotspot__wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.wf-hotspot__glow {
+  background: radial-gradient(circle, rgba(255, 140, 66, 0.55) 0%, rgba(255, 94, 58, 0.25) 45%, rgba(255, 94, 58, 0) 70%);
+  animation: wf-hotspot-glow var(--wf-hotspot-speed) ease-in-out infinite;
+}
+
+.wf-hotspot__wave {
+  border: 2px solid rgba(255, 140, 66, 0.7);
+  animation: wf-hotspot-wave var(--wf-hotspot-speed) ease-out infinite;
+}
+
+.wf-hotspot__wave--late { animation-delay: calc(var(--wf-hotspot-speed) / 2); }
+
+.wf-hotspot__label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(20, 19, 28, 0.85);
+  color: #ffd2b0;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@keyframes wf-hotspot-glow {
+  0%, 100% { transform: scale(0.85); opacity: 0.75; }
+  50%      { transform: scale(1); opacity: 1; }
+}
+
+@keyframes wf-hotspot-wave {
+  0%   { transform: scale(0.35); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
 /* Clusters keep the old circle layer; only leaves get DOM markers. */
 @media (prefers-reduced-motion: reduce) {
   .wf-venue-marker *,
   .wf-venue-marker__badge,
-  .wf-venue-marker__sponsor-ring {
+  .wf-venue-marker__sponsor-ring,
+  .wf-venue-marker--live-offer::before,
+  .wf-hotspot__glow,
+  .wf-hotspot__wave {
     animation: none !important;
   }
 }
