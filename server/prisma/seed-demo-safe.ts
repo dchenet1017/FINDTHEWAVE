@@ -23,6 +23,8 @@
  *   DEMO_PASSWORD      use this instead of generating one
  *   DEMO_CENTER_LAT    where to place the demo venue and the crowd
  *   DEMO_CENTER_LNG    (defaults to Montauk, far from the real venues)
+ *   DEMO_HOURS         how long hands and offers stay live (default 24), so a
+ *                      client can test well after the seed was run
  */
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
@@ -59,6 +61,18 @@ const prisma = new PrismaClient()
 const DEMO_DOMAIN = '@demo.wavefinder.com'
 const MINUTE = 60 * 1000
 const minutesFromNow = (m: number) => new Date(Date.now() + m * MINUTE)
+
+/**
+ * Added to every expiry below. Without it hands and offers lapse 40-110
+ * minutes after seeding, and anyone testing later finds an empty dashboard.
+ * The per-row offsets are kept so items still expire in a staggered order.
+ */
+const DEMO_HOURS = Number(process.env.DEMO_HOURS ?? 24)
+if (!Number.isFinite(DEMO_HOURS) || DEMO_HOURS < 0) {
+  console.error(`DEMO_HOURS must be a non-negative number, got "${process.env.DEMO_HOURS}"`)
+  process.exit(1)
+}
+const expiresFromNow = (m: number) => minutesFromNow(DEMO_HOURS * 60 + m)
 
 /**
  * Montauk, at the far end of Long Island - deliberately NOT Midtown.
@@ -190,6 +204,7 @@ const PEOPLE: DemoPerson[] = [
 async function main() {
   console.log('🌊 Additive demo seed (onboarding + go-out)\n')
   console.log(`   centre: ${CENTER_LAT}, ${CENTER_LNG}`)
+  console.log(`   live for: ~${DEMO_HOURS}h`)
 
   const explicit = process.env.DEMO_PASSWORD
   const credentials: { email: string; password: string; note: string }[] = []
@@ -289,7 +304,7 @@ async function main() {
           latitude: home.latitude,
           longitude: home.longitude,
           createdAt: minutesFromNow(-25),
-          expiresAt: minutesFromNow(person.intent.expiresInMinutes),
+          expiresAt: expiresFromNow(person.intent.expiresInMinutes),
         },
       })
       intentByKey.set(person.key, intent.id)
@@ -374,7 +389,7 @@ async function main() {
         doorCode: offer.doorCode ?? null,
         status: offer.status,
         createdAt: minutesFromNow(offer.createdAtMinutes),
-        expiresAt: minutesFromNow(offer.expiresAtMinutes),
+        expiresAt: expiresFromNow(offer.expiresAtMinutes),
         respondedAt:
           offer.respondedAtMinutes != null ? minutesFromNow(offer.respondedAtMinutes) : null,
       },
