@@ -415,9 +415,11 @@ async function main() {
     { key: 'rival3', name: 'Demo Dune Bar', miles: 1.9, bearing: 260, rating: 3.8, verified: false },
     { key: 'rival4', name: 'Demo Surf Shack', miles: 2.8, bearing: 330, rating: 4.6, verified: true },
   ]
+  const rivalBusinessIds: string[] = []
   for (const r of RIVALS) {
     const at = offset(CENTER_LAT, CENTER_LNG, r.miles, r.bearing)
-    await prisma.user.create({
+    const rival = await prisma.user.create({
+      include: { business: { select: { id: true } } },
       data: {
         email: `${r.key}${DEMO_DOMAIN}`,
         password: await bcrypt.hash(generatePassword(), 10),
@@ -447,6 +449,7 @@ async function main() {
         },
       },
     })
+    if (rival.business) rivalBusinessIds.push(rival.business.id)
   }
 
   const LEADERS = [
@@ -498,6 +501,7 @@ async function main() {
     { first: 'Omar', last: 'Faris', vibes: ['ROOFTOP'], party: 4, dLat: -0.0009, dLng: -0.0004 },
   ]
   const checkInUserIds: string[] = []
+  const clusterIntentIds: string[] = []
   for (const [i, c] of CLUSTER.entries()) {
     const latitude = cellLat + c.dLat
     const longitude = cellLng + c.dLng
@@ -519,7 +523,7 @@ async function main() {
         locationLabel: 'Montauk, NY',
       },
     })
-    await prisma.goOutIntent.create({
+    const clusterIntent = await prisma.goOutIntent.create({
       data: {
         userId: u.id,
         status: 'ACTIVE',
@@ -532,7 +536,22 @@ async function main() {
       },
     })
     checkInUserIds.push(u.id)
+    clusterIntentIds.push(clusterIntent.id)
   }
+
+  // Two rivals with a live offer, so the map shows the outward "live offer"
+  // ripple on more than the demo venue itself. Targeted at demo intents, never
+  // broadcast, so nothing reaches a real user.
+  const rivalOffers = rivalBusinessIds.slice(0, 2).map((businessId, i) => ({
+    businessId,
+    intentId: clusterIntentIds[i],
+    message: i === 0 ? 'Happy hour runs late tonight.' : 'Live set starts at 10 - come early.',
+    perkDescription: i === 0 ? '$5 drafts all night' : 'No cover before 10pm',
+    status: 'PENDING' as const,
+    createdAt: minutesFromNow(-10),
+    expiresAt: expiresFromNow(70),
+  }))
+  await prisma.businessOffer.createMany({ data: rivalOffers })
 
   // Check-ins over the last 30 days, a few of them today, so the heatmap,
   // "Today's Check-ins" and the recent check-ins list all have rows.
@@ -557,7 +576,8 @@ async function main() {
   await prisma.checkIn.createMany({ data: checkIns })
   console.log(
     `   map: ${RIVALS.length} rivals, ${LEADERS.length} wave leaders, ` +
-      `${CLUSTER.length}-hand hotspot, ${checkIns.length} check-ins`
+      `${CLUSTER.length}-hand hotspot, ${checkIns.length} check-ins, ` +
+      `${rivalOffers.length} rival offers`
   )
 
   // --- Summary --------------------------------------------------------------

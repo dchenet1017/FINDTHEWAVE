@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Maximize2, MapPin } from 'lucide-react'
 import { MapContainer } from '@/components/map/MapContainer'
 import { BusinessMarkerLayer } from '@/components/map/BusinessMarkerLayer'
+import { DemandHotspotLayer } from '@/components/map/DemandHotspotLayer'
 import { MiniPopup, type MarkerData } from '@/components/map/MiniPopup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -32,6 +33,10 @@ interface MapWidgetProps {
   title?: string
   className?: string
   interactive?: boolean
+  /** Venues running a live Go Out offer get the outward ripple */
+  activeOfferVenueIds?: Set<string>
+  /** Show the public demand pulse under the pins */
+  showDemandHotspots?: boolean
 }
 
 export function MapWidget({
@@ -47,6 +52,8 @@ export function MapWidget({
   title = 'Map Overview',
   className,
   interactive = true,
+  activeOfferVenueIds,
+  showDemandHotspots = false,
 }: MapWidgetProps) {
   const navigate = useNavigate()
   const [loaded, setLoaded] = useState(false)
@@ -188,11 +195,13 @@ export function MapWidget({
               
               return (
                 <>
+                  {showDemandHotspots && <DemandHotspotLayer map={map} />}
                   <BusinessMarkerLayer
                     map={map}
                     businesses={validMarkers}
                     selectedId={highlightId}
                     onBusinessClick={handleMarkerClick}
+                    activeOfferVenueIds={activeOfferVenueIds}
                   />
                   {selectedMarker && (
                     <MiniPopup

@@ -20,6 +20,7 @@ import { StatCard } from '@/components/business/StatCard'
 import { RevenueChart } from '@/components/business/RevenueChart'
 import { RecentCheckIns } from '@/components/business/RecentCheckIns'
 import { useBusinessLocation, useNearbyCompetitors } from '@/hooks/useBusinessMap'
+import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
 import {
   useBusinessDashboard,
   useBusinessRevenue,
@@ -44,6 +45,7 @@ export default function BusinessDashboard() {
     lng: myBusiness?.longitude,
     radiusMiles: 5,
   })
+  const { activeVenueIds } = useActiveOfferVenues()
 
   const businessName = dashboard?.business?.name || myBusiness?.name || 'Business'
   const isVerified = dashboard?.business?.isVerified ?? myBusiness?.isVerified ?? false
@@ -184,6 +186,8 @@ export default function BusinessDashboard() {
                 highlightId={myBusiness?.id}
                 center={center}
                 zoom={14}
+                activeOfferVenueIds={activeVenueIds}
+                showDemandHotspots
                 onMarkerClick={(m) => {
                   const id = (m as any).id
                   const found =

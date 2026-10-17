@@ -12,6 +12,8 @@ import { WaveLeaderMarkerLayer } from '@/components/map/WaveLeaderMarkerLayer'
 import { CustomerHeatmap } from '@/components/map/CustomerHeatmap'
 import { AdCoverageZone } from '@/components/map/AdCoverageZone'
 import { PulsingMarker } from '@/components/map/PulsingMarker'
+import { DemandHotspotLayer } from '@/components/map/DemandHotspotLayer'
+import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
 import { BusinessLocationEditor } from '@/components/business/BusinessLocationEditor'
 import {
   useBusinessLocation,
@@ -27,6 +29,7 @@ import { formatCurrency } from '@/utils/booking'
 export default function BusinessMapPage() {
   const { data: myBusiness } = useBusinessLocation()
   const updateLocation = useUpdateBusinessLocation()
+  const { activeVenueIds } = useActiveOfferVenues()
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<
@@ -446,6 +449,9 @@ export default function BusinessMapPage() {
               >
                 {(map) => (
                   <>
+                    {/* Where people want to go out right now, under the pins */}
+                    <DemandHotspotLayer map={map} />
+
                     {center && <PulsingMarker map={map} position={center} color="#6C5CE7" />}
 
                     {layers.heatmap && (
@@ -453,7 +459,10 @@ export default function BusinessMapPage() {
                     )}
 
                     {layers.competitors && competitorsWithDistance.length > 0 && (
-                      <BusinessMarkerLayer map={map} businesses={competitorsWithDistance as any} selectedId={null} />
+                      <BusinessMarkerLayer map={map} businesses={competitorsWithDistance as any}
+                        selectedId={null}
+                        activeOfferVenueIds={activeVenueIds}
+                      />
                     )}
 
                     {layers.waveleaders && availableWaveLeaders.length > 0 && (
