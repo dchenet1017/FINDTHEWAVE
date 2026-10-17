@@ -215,6 +215,14 @@ async function main() {
     select: { id: true },
   })
   if (priorUsers.length) {
+    // CheckIn has no onDelete cascade on either side, so it must go first or
+    // the user delete below fails on the foreign key.
+    const priorIds = priorUsers.map((u) => u.id)
+    await prisma.checkIn.deleteMany({
+      where: {
+        OR: [{ userId: { in: priorIds } }, { business: { userId: { in: priorIds } } }],
+      },
+    })
     const removed = await prisma.user.deleteMany({
       where: { email: { endsWith: DEMO_DOMAIN } },
     })
@@ -396,6 +404,161 @@ async function main() {
     })
   }
   console.log(`   ${offers.length} offers, all from "${venue.name}"`)
+
+  // --- Map: rivals, wave leaders, a hotspot and a check-in history ----------
+  // Without these the venue's map shows a single pin in an empty town: rivals
+  // fill the competitor layer, check-ins the customer heatmap, wave leaders
+  // their own layer, and a tight cluster of hands the public demand pulse.
+  const RIVALS = [
+    { key: 'rival1', name: 'Demo Harbor Tap', miles: 0.6, bearing: 45, rating: 4.4, verified: true },
+    { key: 'rival2', name: 'Demo Lighthouse Lounge', miles: 1.2, bearing: 160, rating: 4.1, verified: true },
+    { key: 'rival3', name: 'Demo Dune Bar', miles: 1.9, bearing: 260, rating: 3.8, verified: false },
+    { key: 'rival4', name: 'Demo Surf Shack', miles: 2.8, bearing: 330, rating: 4.6, verified: true },
+  ]
+  for (const r of RIVALS) {
+    const at = offset(CENTER_LAT, CENTER_LNG, r.miles, r.bearing)
+    await prisma.user.create({
+      data: {
+        email: `${r.key}${DEMO_DOMAIN}`,
+        password: await bcrypt.hash(generatePassword(), 10),
+        firstName: 'Demo',
+        lastName: 'Rival',
+        role: 'BUSINESS',
+        isVerified: true,
+        isActive: true,
+        onboardingCompleted: true,
+        onboardingStep: 6,
+        business: {
+          create: {
+            name: r.name,
+            description: 'Demo competitor for product walkthroughs. Not a real bar.',
+            type: 'BAR',
+            address: '2 Demo Plaza',
+            city: 'Montauk',
+            state: 'NY',
+            zipCode: '11954',
+            latitude: at.latitude,
+            longitude: at.longitude,
+            rating: r.rating,
+            isVerified: r.verified,
+            isActive: true,
+            approvalStatus: 'APPROVED',
+          },
+        },
+      },
+    })
+  }
+
+  const LEADERS = [
+    { key: 'leader1', first: 'Nina', last: 'Cole', specialty: 'Nightlife Guide', rate: 45, rating: 4.8, miles: 0.4, bearing: 100 },
+    { key: 'leader2', first: 'Marco', last: 'Silva', specialty: 'Bar Crawl Host', rate: 35, rating: 4.5, miles: 1.5, bearing: 220 },
+  ]
+  for (const l of LEADERS) {
+    const at = offset(CENTER_LAT, CENTER_LNG, l.miles, l.bearing)
+    await prisma.user.create({
+      data: {
+        email: `${l.key}${DEMO_DOMAIN}`,
+        password: await bcrypt.hash(generatePassword(), 10),
+        firstName: l.first,
+        lastName: l.last,
+        role: 'WAVELEADER',
+        isVerified: true,
+        isActive: true,
+        onboardingCompleted: true,
+        onboardingStep: 6,
+        waveLeader: {
+          create: {
+            displayName: `${l.first} ${l.last}`,
+            specialty: l.specialty,
+            description: 'Demo wave leader for product walkthroughs.',
+            hourlyRate: l.rate,
+            rating: l.rating,
+            totalReviews: 12,
+            isAvailable: true,
+            isVerified: true,
+            location: 'Montauk, NY',
+            latitude: at.latitude,
+            longitude: at.longitude,
+          },
+        },
+      },
+    })
+  }
+
+  // The public hotspot layer only shows ~500 m grid cells holding 3+ hands
+  // (HOTSPOT_MIN_HANDS), and the crowd above is too spread out to fill one.
+  // Snap to the centre of the cell beside the venue and keep jitter well inside it.
+  const CELL = 0.005
+  const cellLat = (Math.floor(CENTER_LAT / CELL) + 0.5) * CELL
+  const cellLng = (Math.floor(CENTER_LNG / CELL) + 0.5) * CELL
+  const CLUSTER = [
+    { first: 'Ava', last: 'Kerr', vibes: ['ROOFTOP', 'DRINKS'], party: 2, dLat: 0.0008, dLng: 0.0006 },
+    { first: 'Ben', last: 'Ito', vibes: ['DRINKS'], party: 3, dLat: -0.0007, dLng: 0.0009 },
+    { first: 'Zoe', last: 'Hart', vibes: ['LIVE_MUSIC'], party: 2, dLat: 0.0005, dLng: -0.0010 },
+    { first: 'Omar', last: 'Faris', vibes: ['ROOFTOP'], party: 4, dLat: -0.0009, dLng: -0.0004 },
+  ]
+  const checkInUserIds: string[] = []
+  for (const [i, c] of CLUSTER.entries()) {
+    const latitude = cellLat + c.dLat
+    const longitude = cellLng + c.dLng
+    const u = await prisma.user.create({
+      data: {
+        email: `cluster${i + 1}${DEMO_DOMAIN}`,
+        password: await bcrypt.hash(generatePassword(), 10),
+        firstName: c.first,
+        lastName: c.last,
+        role: 'USER',
+        isVerified: true,
+        isActive: true,
+        onboardingCompleted: true,
+        onboardingCompletedAt: minutesFromNow(-60 * 24 * 3),
+        onboardingStep: 6,
+        experienceGoal: 'GO_OUT',
+        locationLat: latitude,
+        locationLng: longitude,
+        locationLabel: 'Montauk, NY',
+      },
+    })
+    await prisma.goOutIntent.create({
+      data: {
+        userId: u.id,
+        status: 'ACTIVE',
+        vibes: c.vibes,
+        partySize: c.party,
+        latitude,
+        longitude,
+        createdAt: minutesFromNow(-15),
+        expiresAt: expiresFromNow(60 + i * 10),
+      },
+    })
+    checkInUserIds.push(u.id)
+  }
+
+  // Check-ins over the last 30 days, a few of them today, so the heatmap,
+  // "Today's Check-ins" and the recent check-ins list all have rows.
+  const crowdUsers = await prisma.user.findMany({
+    where: { email: { endsWith: DEMO_DOMAIN }, role: 'USER', onboardingCompleted: true },
+    select: { id: true },
+  })
+  checkInUserIds.push(...crowdUsers.map((u) => u.id).filter((id) => !checkInUserIds.includes(id)))
+  const methods = ['QR_CODE', 'GEOFENCE', 'MANUAL'] as const
+  const checkIns = checkInUserIds.flatMap((userId, i) =>
+    Array.from({ length: 1 + (i % 4) }, (_, n) => ({
+      userId,
+      businessId: venue.id,
+      method: methods[(i + n) % methods.length],
+      points: 10,
+      // Every third user checked in today; the rest are spread over the month.
+      createdAt: minutesFromNow(
+        n === 0 && i % 3 === 0 ? -(30 + i * 7) : -60 * 24 * (1 + ((i * 5 + n * 9) % 29))
+      ),
+    }))
+  )
+  await prisma.checkIn.createMany({ data: checkIns })
+  console.log(
+    `   map: ${RIVALS.length} rivals, ${LEADERS.length} wave leaders, ` +
+      `${CLUSTER.length}-hand hotspot, ${checkIns.length} check-ins`
+  )
 
   // --- Summary --------------------------------------------------------------
   console.log('\n✨ Demo data ready\n')

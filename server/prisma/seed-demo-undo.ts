@@ -80,6 +80,16 @@ async function main() {
   // Deleting the user cascades to GoOutIntent, which cascades to BusinessOffer,
   // so one delete clears all three. See onDelete: Cascade in schema.prisma.
   if (apply) {
+    // CheckIn does not cascade from User or Business, so clear it first.
+    const checkIns = await prisma.checkIn.deleteMany({
+      where: {
+        OR: [
+          { userId: { in: demoUserIds } },
+          { business: { userId: { in: demoUserIds } } },
+        ],
+      },
+    })
+    console.log(`\n🧹 Deleted ${checkIns.count} check-ins at or by demo accounts.`)
     const removed = await prisma.user.deleteMany({
       where: { email: { endsWith: DEMO_DOMAIN } },
     })
