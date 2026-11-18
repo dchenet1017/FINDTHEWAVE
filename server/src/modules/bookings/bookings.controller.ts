@@ -6,7 +6,7 @@ import * as bookingsService from './bookings.service'
 export const bookingsController = {
   async createBooking(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
-    const body = (request as { validatedBody: import('./bookings.schema').CreateBookingInput })
+    const body = (request as unknown as { validatedBody: import('./bookings.schema').CreateBookingInput })
       .validatedBody
     const result = await bookingsService.createBookingWithPaymentIntent(userId, body)
     return reply.send(successResponse(result))
@@ -15,7 +15,7 @@ export const bookingsController = {
   async confirmPayment(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { paymentIntentId } = (request as { validatedBody: { paymentIntentId: string } })
+    const { paymentIntentId } = (request as unknown as { validatedBody: { paymentIntentId: string } })
       .validatedBody
     const result = await bookingsService.confirmBookingPayment(
       userId,
@@ -35,7 +35,7 @@ export const bookingsController = {
   async cancelBooking(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { reason } = (request as { validatedBody: { reason?: string } }).validatedBody
+    const { reason } = (request as unknown as { validatedBody: { reason?: string } }).validatedBody
     const result = await bookingsService.cancelUserBooking(userId, bookingId, reason)
     return reply.send(successResponse(result))
   },
@@ -43,7 +43,7 @@ export const bookingsController = {
   async rescheduleBooking(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { newDate, newTime } = (request as {
+    const { newDate, newTime } = (request as unknown as {
       validatedBody: { newDate: string; newTime: string }
     }).validatedBody
     const booking = await bookingsService.rescheduleUserBooking(
@@ -65,7 +65,7 @@ export const bookingsController = {
   async declineBooking(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { reason, message } = (request as {
+    const { reason, message } = (request as unknown as {
       validatedBody: { reason: string; message?: string }
     }).validatedBody
     const result = await bookingsService.declineBookingByWaveLeader(
@@ -80,7 +80,7 @@ export const bookingsController = {
   async proposeBooking(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { newDate, newTime, message } = (request as {
+    const { newDate, newTime, message } = (request as unknown as {
       validatedBody: { newDate: string; newTime: string; message?: string }
     }).validatedBody
     const result = await bookingsService.proposeBookingByWaveLeader(
@@ -110,7 +110,7 @@ export const bookingsController = {
   async submitReview(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user.userId
     const { bookingId } = request.params as { bookingId: string }
-    const { rating, review, tags, anonymous } = (request as {
+    const { rating, review, tags, anonymous } = (request as unknown as {
       validatedBody: { rating: number; review?: string; tags?: string[]; anonymous?: boolean }
     }).validatedBody
 

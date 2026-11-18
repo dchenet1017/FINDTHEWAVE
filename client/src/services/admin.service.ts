@@ -72,13 +72,19 @@ export interface Business {
   isVerified: boolean
   createdAt: string
   updatedAt: string
+  /** False for a directory listing nobody has claimed yet */
+  isClaimed?: boolean
+  isExampleData?: boolean
+  source?: string | null
+  sourceUrl?: string | null
+  /** Null for an unclaimed listing */
   user: {
     id: string
     email: string
     firstName: string | null
     lastName: string | null
     avatar: string | null
-  }
+  } | null
   _count?: {
     promotions: number
     events: number

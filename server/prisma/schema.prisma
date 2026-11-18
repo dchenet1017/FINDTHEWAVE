@@ -109,6 +109,9 @@ model User {
   locationLat            Float?
   locationLng            Float?
   locationLabel          String?
+  /// Sample account for demos; its go-out hands stay out of public hotspots
+  /// and real venues' demand panels
+  isExampleData          Boolean         @default(false)
   /// Account settings page values (privacy, notification, display choices),
   /// stored as the user saved them and merged over defaults on read
   settings               Json?
@@ -173,8 +176,9 @@ model WaveLeader {
 
 model Business {
   id             String         @id @default(cuid())
-  userId         String         @unique
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null for an unclaimed listing imported from a public directory
+  userId         String?        @unique
+  user           User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
   description    String         @db.Text
   type           BusinessType
@@ -206,6 +210,22 @@ model Business {
   crawlStops     CrawlStop[]      @relation("CrawlStopBusiness")
   invitesSent    BusinessInvite[]
   goOutOffers    BusinessOffer[]
+
+  /// False for a listing imported from a public directory that no owner has
+  /// claimed yet. Existing (owner-created) businesses default to true.
+  isClaimed     Boolean   @default(true)
+  /// Sample rows for demos; shown with an "Example data" label and kept out
+  /// of real venues' competitor and demand views
+  isExampleData Boolean   @default(false)
+  /// Where an imported listing came from: DTBK_DIRECTORY, MYRTLE_DIRECTORY, DTBK_EVENTS
+  source        String?
+  /// The listing's id in that source, so a re-import updates instead of duplicating
+  sourceId      String?
+  sourceUrl     String?
+  importedAt    DateTime?
+
+  @@unique([source, sourceId])
+  @@index([isClaimed])
 }
 
 model Community {
@@ -489,6 +509,11 @@ model Event {
   registrations Int @default(0)
   checkIns      Int @default(0)
 
+  // Imported from a public calendar (DTBK_EVENTS); null for venue-created events
+  source    String?
+  sourceId  String?
+  sourceUrl String?
+
   // Relations
   business           Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   featuredWaveLeader WaveLeader?     @relation(fields: [featuredWaveLeaderId], references: [id], onDelete: SetNull)
@@ -498,6 +523,7 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([source, sourceId])
   @@index([businessId])
   @@index([startDate])
   @@index([status])

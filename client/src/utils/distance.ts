@@ -50,19 +50,23 @@ export function isWithinRadius(
 }
 
 /**
- * Format distance in a human-readable way
+ * Format distance in a human-readable way, in US units like the rest of the
+ * app (the pilot is in Brooklyn).
  * @param meters Distance in meters
- * @returns Formatted string like "50m away" or "1.2km away"
+ * @returns Formatted string like "350 ft away" or "1.2 mi away"
  */
 export function formatDistance(meters: number): string {
   if (Number.isNaN(meters) || meters < 0) return 'Unknown distance'
 
-  if (meters < 1000) {
-    return `${Math.round(meters)}m away`
+  const feet = meters * 3.28084
+  if (feet < 1000) {
+    return `${Math.round(feet)} ft away`
   }
 
-  const km = meters / 1000
-  return `${km.toFixed(1)}km away`
+  const miles = meters / 1609.34
+  return miles < 100
+    ? `${miles.toFixed(1)} mi away`
+    : `${Math.round(miles).toLocaleString('en-US')} mi away`
 }
 
 /**

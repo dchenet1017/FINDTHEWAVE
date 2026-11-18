@@ -129,7 +129,7 @@ export const updateLocation = async (request: FastifyRequest, reply: FastifyRepl
   try {
     const userId = (request.user as any).userId
     const validated = businessSchema.updateLocationSchema.parse(request.body)
-    const updated = await businessService.updateBusinessLocation(userId, validated)
+    const updated = await businessService.updateBusinessLocation(userId, validated as { latitude: number; longitude: number; address: string })
     return reply.send(successResponse(updated))
   } catch (error) {
     return handleValidationError(reply, error)

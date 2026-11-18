@@ -124,6 +124,7 @@ export default function AdminMapPage() {
               <MapContainer
                 onMapLoad={(map) => {
                   const b = map.getBounds()
+                  if (!b) return
                   setBounds({
                     ne: { lat: b.getNorthEast().lat, lng: b.getNorthEast().lng },
                     sw: { lat: b.getSouthWest().lat, lng: b.getSouthWest().lng },
@@ -131,6 +132,7 @@ export default function AdminMapPage() {
                 }}
                 onMoveEnd={(map) => {
                   const b = map.getBounds()
+                  if (!b) return
                   setBounds({
                     ne: { lat: b.getNorthEast().lat, lng: b.getNorthEast().lng },
                     sw: { lat: b.getSouthWest().lat, lng: b.getSouthWest().lng },

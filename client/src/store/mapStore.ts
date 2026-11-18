@@ -4,6 +4,8 @@ import type { Business, BusinessType, WaveLeader } from '../../../shared/types/b
 
 export interface MapFilters {
   businessTypes: BusinessType[]
+  /** Single-type dropdown on the map pages; "all" (or unset) means no type filter */
+  type?: string
   showWaveLeaders: boolean
   showEvents: boolean
   showCheckIns: boolean
@@ -72,7 +74,7 @@ const defaultLayers: MapState['layers'] = {
 }
 
 export const useMapStore = createZustand<MapState>((set) => ({
-  mapCenter: [-74.006, 40.7128],
+  mapCenter: [-73.9845, 40.6925], // Downtown Brooklyn pilot
   mapZoom: 12,
   bounds: null,
   style: 'dark',

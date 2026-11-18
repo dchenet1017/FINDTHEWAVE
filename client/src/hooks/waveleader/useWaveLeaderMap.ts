@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { waveleaderService } from '@/services/waveleader.service'
 import { businessService } from '@/services/business.service'
 import type { Business } from '../../../../shared/types/business'
@@ -21,6 +21,8 @@ export const useMyServiceArea = () => {
 export const useBusinessesInArea = (center?: [number, number], radiusMiles = 10) => {
   return useQuery({
     queryKey: ['waveleader', 'businesses-area', center, radiusMiles],
+    // Keep the pins while a moved centre or new radius loads (no blinking)
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!center) return []
       try {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { userService } from '@/services/user.service'
 import { useFavorites, useAddFavorite, useRemoveFavorite, useIsFavorite } from './useUserFavorites'
-import type { Business } from '../../../../shared/types/business'
+import type { Business } from '../../../shared/types/business'
 
 export interface VisitedPlace {
   id: string

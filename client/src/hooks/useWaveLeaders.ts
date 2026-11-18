@@ -70,7 +70,7 @@ export function useWaveLeaders(filters: WaveLeaderFilters) {
         '/waveleader',
         { params }
       )
-      const result = data.success ? data.data : data
+      const result = (data.success ? data.data : data) as ListWaveLeadersResponse | undefined
       return result ?? { waveLeaders: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }
     },
   })

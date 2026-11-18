@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { businessService } from '@/services/business.service'
 import { adminService } from '@/services/admin.service'
 import api from '@/lib/axios'
@@ -14,6 +14,9 @@ interface AdminMapData {
 export const useAdminMapData = (bounds: MapBounds | null) => {
   return useQuery<AdminMapData>({
     queryKey: ['admin', 'map-data', bounds],
+    // Keep the current pins on screen while the next bounds loads; without
+    // this every pan emptied the map for a second (all pins blinked).
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const [bizRes, waveRes, eventRes] = await Promise.all([
         bounds ? businessService.getBusinessesForMap(bounds) : businessService.getBusinesses({ limit: 200, page: 1 }),

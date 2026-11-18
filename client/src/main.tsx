@@ -4,6 +4,9 @@ import './index.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './styles/map.css'
 import App from './App.tsx'
+import { registerServiceWorker } from './lib/pwa'
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

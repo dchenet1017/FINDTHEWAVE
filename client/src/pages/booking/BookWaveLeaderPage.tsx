@@ -52,7 +52,7 @@ export default function BookWaveLeaderPage() {
   const hourlyRate = waveLeader?.hourlyRate ?? 0
 
   const handleContinue = () => {
-    if (!waveLeaderId || !selectedDate || !selectedTime) return
+    if (!waveLeaderId || !waveLeader || !selectedDate || !selectedTime) return
     const y = selectedDate.getFullYear()
     const m = String(selectedDate.getMonth() + 1).padStart(2, '0')
     const d = String(selectedDate.getDate()).padStart(2, '0')
@@ -65,7 +65,7 @@ export default function BookWaveLeaderPage() {
       location,
       notes: notes || undefined,
       waveLeaderName: waveLeader.displayName,
-      waveLeaderAvatar: waveLeader.user?.avatar,
+      waveLeaderAvatar: waveLeader.user?.avatar ?? undefined,
       hourlyRate,
     }
     saveBookingDraft(bookingDraft)

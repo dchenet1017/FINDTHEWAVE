@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { FavoriteButton } from './FavoriteButton'
 import { CheckInButton } from './CheckInButton'
+import { ListingBadges } from './ListingBadges'
 import type { Business } from '../../../../shared/types/business'
 
 interface BusinessPopupProps {
@@ -75,7 +76,11 @@ function BusinessPopupContent({
   const promo = hasPromo ? (business as any).promotions[0] : null
   const isSponsored = Boolean((business as any).isSponsored || (business as any).activeAdvertisement)
 
-  const rating = (business as any).rating
+  // A brand-new listing has rating 0 with no reviews - showing "0.0" reads
+  // like a bad score, so only show it once someone has reviewed the place.
+  const totalReviews = Number((business as any).totalReviews ?? 0)
+  const rating = totalReviews > 0 ? (business as any).rating : undefined
+  const hasImage = Boolean(business.images && business.images.length > 0)
   const distance = (business as any).distance
 
   const address =
@@ -93,31 +98,46 @@ function BusinessPopupContent({
       : undefined
 
   return (
-    <div className="w-[320px] text-white">
-      <div className="relative h-32 rounded-md overflow-hidden bg-dark-bg">
-        {business.images && business.images.length > 0 ? (
-          <img src={business.images[0]} alt={business.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-r from-primary/50 to-secondary/50" />
-        )}
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-gray-200 hover:text-white"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="absolute bottom-2 left-2">
+    <div className="w-[300px] text-white">
+      {hasImage ? (
+        <div className="relative h-28 rounded-md overflow-hidden bg-dark-bg">
+          <img src={business.images![0]} alt={business.name} className="h-full w-full object-cover" />
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-gray-200 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="absolute bottom-2 left-2">
+            <Badge variant="secondary" className="text-xs">
+              {business.type}
+            </Badge>
+          </div>
+        </div>
+      ) : (
+        // No photo yet (most imported listings): a slim header instead of a
+        // big empty banner
+        <div className="flex items-center justify-between">
           <Badge variant="secondary" className="text-xs">
             {business.type}
           </Badge>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full p-1 text-gray-400 hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-2 pt-3">
+      <div className={hasImage ? 'space-y-2 pt-3' : 'space-y-2 pt-2'}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-semibold">{business.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-lg font-semibold leading-tight">{business.name}</p>
+              <ListingBadges business={business} />
               {isSponsored && <Badge variant="warning">Sponsored</Badge>}
               {business.isVerified && <ShieldCheck className="h-4 w-4 text-success" />}
             </div>
@@ -126,7 +146,7 @@ function BusinessPopupContent({
               {address}
             </p>
           </div>
-          {rating !== undefined && (
+          {rating !== undefined && rating !== null && (
             <div className="flex items-center gap-1 text-sm text-warning">
               <Star className="h-4 w-4" />
               {Number(rating).toFixed(1)}

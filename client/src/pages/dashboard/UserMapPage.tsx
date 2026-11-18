@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Menu, X, Loader2, Heart, MapPin, Layers, MapPinned } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Menu, X, Heart, MapPin, Layers, MapPinned, ChevronDown } from 'lucide-react'
 import { MapContainer } from '@/components/map/MapContainer'
 import { BusinessMarkerLayer } from '@/components/map/BusinessMarkerLayer'
 import { BusinessPopup } from '@/components/map/BusinessPopup'
@@ -24,7 +24,9 @@ import { useMapStore } from '@/store/mapStore'
 import { useFavorites } from '@/hooks/useUserFavorites'
 import { useActiveOfferVenues } from '@/hooks/useActiveOfferVenues'
 import { DemandHotspotLayer } from '@/components/map/DemandHotspotLayer'
-import { getCurrentPosition } from '@/lib/mapbox'
+import { EventMapMarkers } from '@/components/events/EventMapMarker'
+import { useNearbyEvents } from '@/hooks/useEvents'
+import { getCurrentPosition, isNearPilot } from '@/lib/mapbox'
 import type { Business } from '../../../../shared/types/business'
 import type { MapBounds } from '@/services/business.service'
 import type { Crawl } from '@/types/crawl'
@@ -43,24 +45,33 @@ export default function UserMapPage() {
   const [showWaveLeaders, setShowWaveLeaders] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
   const [showCrawls, setShowCrawls] = useState(false)
+  const [layersOpen, setLayersOpen] = useState(false)
   const [selectedWaveLeader, setSelectedWaveLeader] = useState<any>(null)
   const [selectedCrawl, setSelectedCrawl] = useState<Crawl | null>(null)
 
   const { filters, setFilters } = useMapStore()
-  const { data: businessesData, isFetching } = useMapBusinesses(bounds)
+  // isPending is true only until the first result arrives; later pans keep the
+  // current pins and list on screen while the next area loads (isFetching).
+  const { data: businessesData, isFetching, isPending } = useMapBusinesses(bounds)
   const { data: favorites = [] } = useFavorites()
   // Venues running a live Go Out offer get the 🕺 badge
   const { activeVenueIds } = useActiveOfferVenues()
   const businesses: Business[] = Array.isArray(businessesData) ? businessesData : []
 
-  const centerForWaveLeaders = userLocation
-    ? { lat: userLocation.lat, lng: userLocation.lng }
-    : bounds
-      ? {
-          lat: (bounds.ne.lat + bounds.sw.lat) / 2,
-          lng: (bounds.ne.lng + bounds.sw.lng) / 2,
-        }
-      : null
+  // Where to look for wave leaders, crawls and events: the user, when they're
+  // in the pilot area; otherwise the part of the map they're looking at (a
+  // user browsing from another city would otherwise find nothing). The map
+  // centre is rounded to ~1 km so small pans don't refetch every layer.
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  const centerForWaveLeaders =
+    userLocation && isNearPilot(userLocation.lat, userLocation.lng)
+      ? { lat: userLocation.lat, lng: userLocation.lng }
+      : bounds
+        ? {
+            lat: round2((bounds.ne.lat + bounds.sw.lat) / 2),
+            lng: round2((bounds.ne.lng + bounds.sw.lng) / 2),
+          }
+        : null
   const { data: waveLeaders = [], isLoading: waveLeadersLoading } = useNearbyWaveLeaders(
     centerForWaveLeaders?.lat,
     centerForWaveLeaders?.lng,
@@ -75,11 +86,27 @@ export default function UserMapPage() {
   )
   const crawls = crawlsData?.items ?? []
 
+  // Events layer: in-person events near the map centre
+  const navigate = useNavigate()
+  const { data: nearbyEventsData } = useNearbyEvents(
+    showEvents ? centerForWaveLeaders?.lat : undefined,
+    showEvents ? centerForWaveLeaders?.lng : undefined,
+    25
+  )
+  const mapEvents = useMemo(
+    () =>
+      (nearbyEventsData?.items ?? []).filter(
+        (e) => Number.isFinite(Number(e.latitude)) && Number.isFinite(Number(e.longitude))
+      ),
+    [nearbyEventsData]
+  )
+
   useEffect(() => {
     getCurrentPosition()
       .then((pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }))
       .catch(() => setUserLocation(null))
   }, [])
+
 
   const handleMapLoad = (map: any) => {
     setMapInstance(map)
@@ -105,7 +132,11 @@ export default function UserMapPage() {
     if (mapInstance && lat !== undefined && lng !== undefined) {
       mapInstance.flyTo({
         center: [Number(lng), Number(lat)],
-        zoom: 14,
+        // Pins cluster up to zoom 16, so below that the chosen pin could vanish into
+        // a cluster. Never zoom the user back out either.
+        zoom: Math.max(mapInstance.getZoom?.() ?? 0, 16.5),
+        // Put the pin in the lower part of the map so its popup fits above it
+        offset: [0, 140],
         essential: true,
       })
     }
@@ -151,7 +182,9 @@ export default function UserMapPage() {
   }, [showCheckIns])
 
   return (
-    <div className="flex h-[calc(100vh-60px)] bg-dark-bg text-white overflow-hidden">
+    // The layout pads its content; a full-bleed map cancels that, otherwise the
+    // page is taller than the screen, scrolls, and slides over the header.
+    <div className="-m-4 lg:-m-6 flex h-[calc(100vh-60px)] bg-dark-bg text-white overflow-hidden">
       {/* Sidebar */}
       <div
         className={cn(
@@ -165,7 +198,8 @@ export default function UserMapPage() {
           businesses={filteredBusinesses}
           selectedBusiness={selectedBusiness}
           onBusinessClick={handleSelectBusiness}
-          isLoading={isFetching}
+          isLoading={isPending}
+          isRefreshing={isFetching && !isPending}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onClose={() => setSidebarOpen(false)}
@@ -205,19 +239,27 @@ export default function UserMapPage() {
             <div className="max-h-[42vh] overflow-y-auto">
               <OffersInbox className="rounded-2xl border border-gray-800 bg-dark-card/95 p-4 backdrop-blur-sm" />
             </div>
-            <GoOutButton />
+            <GoOutButton compact />
           </div>
         </div>
 
-        {/* Layer controls */}
-        <div className="absolute top-3 right-3 z-30">
-          <Card className="bg-dark-card/95 backdrop-blur-sm border-gray-800 shadow-lg">
-            <CardContent className="p-3 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
-                <Layers className="h-4 w-4" />
-                Layers
-              </div>
-              <div className="space-y-2">
+        {/* Layer controls. Collapsed into one button that sits left of the
+            map's zoom / fullscreen / locate controls instead of covering them. */}
+        <div className="absolute top-3 right-14 z-30 flex flex-col items-end">
+          <button
+            type="button"
+            onClick={() => setLayersOpen((o) => !o)}
+            aria-expanded={layersOpen}
+            className="flex items-center gap-2 rounded-md border border-gray-700 bg-dark-card/95 px-3 py-1.5 text-xs font-medium text-gray-200 shadow-lg backdrop-blur-sm hover:border-gray-500"
+          >
+            <Layers className="h-4 w-4" />
+            Layers
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', layersOpen && 'rotate-180')} />
+          </button>
+          {layersOpen && (
+          <Card className="mt-2 w-52 bg-dark-card/95 backdrop-blur-sm border-gray-800 shadow-lg">
+            <CardContent className="p-3">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-300 flex items-center gap-1.5">
                     <Heart className="h-3.5 w-3.5 text-red-500" />
@@ -276,15 +318,8 @@ export default function UserMapPage() {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
-
-        {/* Loading indicator */}
-        {isFetching && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-md bg-dark-card border border-gray-800 px-3 py-2 text-xs text-gray-300">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            Updating map…
-          </div>
-        )}
 
         {/* Map */}
         <MapContainer
@@ -292,7 +327,13 @@ export default function UserMapPage() {
           onMoveEnd={handleMoveEnd}
           interactive
           showUserLocation={true}
-          initialCenter={userLocation ? [userLocation.lng, userLocation.lat] : undefined}
+          // Follow the user only in/near the pilot area; from elsewhere (e.g. a remote
+          // demo) stay on Downtown Brooklyn so the map isn't empty.
+          initialCenter={
+            userLocation && isNearPilot(userLocation.lat, userLocation.lng)
+              ? [userLocation.lng, userLocation.lat]
+              : undefined
+          }
         >
           {(map) => (
             <>
@@ -368,6 +409,15 @@ export default function UserMapPage() {
                 />
               )}
 
+              {/* Events */}
+              {showEvents && (
+                <EventMapMarkers
+                  map={map}
+                  events={mapEvents}
+                  onEventClick={(ev) => navigate(`/events/${ev.id}`)}
+                />
+              )}
+
               {/* Bar crawl stop markers */}
               {showCrawls && crawls.length > 0 && (
                 <CrawlMarkerLayer
@@ -408,9 +458,10 @@ export default function UserMapPage() {
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
                       {selectedBusiness.type} •{' '}
-                      {(selectedBusiness as any).city ||
+                      {(selectedBusiness as any).address ||
+                        (selectedBusiness as any).city ||
                         (selectedBusiness as any).location?.city ||
-                        'Unknown'}
+                        'Address not listed'}
                     </p>
                   </div>
                   <FavoriteButton businessId={selectedBusiness.id} />
@@ -500,9 +551,10 @@ export default function UserMapPage() {
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <MapPin className="h-3.5 w-3.5" />
                       <span>
-                        {(biz as any).city ||
+                        {(biz as any).address ||
+                          (biz as any).city ||
                           (biz as any).location?.city ||
-                          'Unknown'}
+                          'Address not listed'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 pt-2">

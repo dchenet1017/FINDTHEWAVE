@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { Map as MapboxMap, GeoJSONSource } from 'mapbox-gl'
-import { createCircleGeoJSON } from '@/lib/mapbox'
+import { createCircleGeoJSON, whenStyleReady } from '@/lib/mapbox'
 
 type Props = {
   map: MapboxMap | null
@@ -63,10 +63,10 @@ export function AdCoverageZone({ map, center, radiusMiles, visible }: Props) {
       map.setLayoutProperty(LINE_LAYER_ID, 'visibility', visible ? 'visible' : 'none')
     }
 
-    if (map.isStyleLoaded()) add()
-    else map.once('load', add)
+    const cancelReady = whenStyleReady(map, add)
 
     return () => {
+      cancelReady()
       try {
         if (!map) return
         if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID)

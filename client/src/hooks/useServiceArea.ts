@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { waveleaderService } from '@/services/waveleader.service'
 import { businessService } from '@/services/business.service'
-import type { Business } from '../../../../shared/types/business'
+import type { Business } from '../../../shared/types/business'
 
 export const useServiceArea = () => {
   return useQuery({
@@ -46,6 +46,8 @@ export const useBusinessesInArea = (
 ) => {
   return useQuery({
     queryKey: ['waveleader', 'businesses-area', center, radius],
+    // Keep the pins while a moved centre or new radius loads (no blinking)
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!center) return []
       try {

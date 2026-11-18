@@ -16,8 +16,8 @@ export default function CreateEventPage() {
   const { data: event, isLoading: eventLoading } = useBusinessEvent(id, isEdit)
 
   const businessName = dashboard?.business?.name || location?.name || 'My business'
-  const lat = location?.latitude ?? 40.7128
-  const lng = location?.longitude ?? -74.006
+  const lat = location?.latitude ?? 40.6925
+  const lng = location?.longitude ?? -73.9845
   const addressLine = useMemo(() => {
     if (!location) return ''
     return [location.address, location.city, location.state, location.zipCode]

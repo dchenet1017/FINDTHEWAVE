@@ -6,13 +6,15 @@ import { GoOutSheet } from './GoOutSheet'
 
 interface GoOutButtonProps {
   className?: string
+  /** A slim pill for the map, so the CTA doesn't cover the venues */
+  compact?: boolean
 }
 
 /**
  * The headline CTA. Swaps itself for the broadcasting banner once a hand is up,
  * so the map/home screen only ever shows one go-out control.
  */
-export function GoOutButton({ className }: GoOutButtonProps) {
+export function GoOutButton({ className, compact = false }: GoOutButtonProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const { data } = useMyIntent()
 
@@ -21,6 +23,29 @@ export function GoOutButton({ className }: GoOutButtonProps) {
 
   if (isLive) {
     return <ActiveIntentBanner className={className} />
+  }
+
+  if (compact) {
+    return (
+      <>
+        <div className={cn('flex justify-center', className)}>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className={cn(
+              'flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-colors',
+              'hover:bg-primary/90',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dark-bg'
+            )}
+          >
+            <span aria-hidden>🙋</span>
+            I want to go out
+            <span className="hidden font-normal text-white/70 sm:inline">· venues come to you</span>
+          </button>
+        </div>
+        <GoOutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+      </>
+    )
   }
 
   return (

@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify'
+import type { RegisterData } from './auth.types'
 import { AuthService } from './auth.service'
 import {
   registerSchema,
@@ -25,7 +26,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/register', strict, async (request, reply) => {
     try {
       const body = registerSchema.parse(request.body)
-      const result = await authService.register(body)
+      const result = await authService.register(body as RegisterData)
 
       if (!result.success) {
         return reply.code(400).send(result)

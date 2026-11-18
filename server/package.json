@@ -17,6 +17,9 @@
     "db:generate": "prisma generate",
     "db:seed:demo:undo": "tsx prisma/seed-demo-undo.ts",
     "db:seed:demo:safe": "tsx prisma/seed-demo-safe.ts",
+    "db:seed:showcase": "tsx prisma/seed-showcase.ts",
+    "import:brooklyn:fetch": "tsx prisma/import/fetch-brooklyn.ts",
+    "import:brooklyn": "tsx prisma/import/load-brooklyn.ts",
     "db:reset:pilot": "tsx prisma/reset-for-pilot.ts"
   },
   "dependencies": {

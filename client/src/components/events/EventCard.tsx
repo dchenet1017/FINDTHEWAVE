@@ -13,6 +13,8 @@ export interface EventCardProps {
   onClick?: () => void
   userLat?: number
   userLng?: number
+  /** Clicking the card opens the event page (default true) */
+  navigateOnDetail?: boolean
 }
 
 function attendeeLabel(event: Event) {

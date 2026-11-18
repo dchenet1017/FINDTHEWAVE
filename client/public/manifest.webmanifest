@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "WaveFinder",
+  "short_name": "WaveFinder",
+  "description": "Find where the wave is tonight: nearby venues, live offers, partner perks and check-ins.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080B16",
+  "theme_color": "#080B16",
+  "categories": ["lifestyle", "social", "food"],
+  "icons": [
+    { "src": "/icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Explore map", "url": "/dashboard/map", "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192" }] },
+    { "name": "My passport", "url": "/dashboard/passport", "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192" }] }
+  ]
+}

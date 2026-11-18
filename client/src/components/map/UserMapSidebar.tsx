@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { X, Heart, Calendar, User, Search, SlidersHorizontal, Map, List, Star } from 'lucide-react'
+import { X, Heart, Calendar, User, Search, SlidersHorizontal, Map, List, Star, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Slider } from '@/components/ui/Slider'
 import { Switch } from '@/components/ui/Switch'
@@ -30,7 +30,10 @@ interface UserMapSidebarProps {
   businesses: (Business & { distance?: number })[]
   selectedBusiness?: Business | null
   onBusinessClick: (business: Business) => void
+  /** True only before the first results arrive */
   isLoading?: boolean
+  /** A newer area is loading; the current results stay visible meanwhile */
+  isRefreshing?: boolean
   viewMode: 'map' | 'list'
   onViewModeChange: (mode: 'map' | 'list') => void
   onClose?: () => void
@@ -57,6 +60,7 @@ export function UserMapSidebar({
   selectedBusiness,
   onBusinessClick,
   isLoading,
+  isRefreshing = false,
   viewMode,
   onViewModeChange,
   onClose,
@@ -113,8 +117,8 @@ export function UserMapSidebar({
 
   return (
     <div className="h-full w-full flex flex-col bg-dark-card border-r border-gray-800">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+      {/* Header - mobile only; on desktop the app sidebar already shows the brand */}
+      <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between lg:hidden">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center font-bold text-primary">
             WF
@@ -169,7 +173,7 @@ export function UserMapSidebar({
           </div>
 
           {/* Category tabs */}
-          <div className="px-4 pb-3 overflow-x-auto">
+          <div className="px-4 pb-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-2 min-w-max">
               {TYPE_TABS.map((tab) => (
                 <button
@@ -243,9 +247,14 @@ export function UserMapSidebar({
 
           {/* Results summary */}
           <div className="px-4 pb-3 flex items-center justify-between text-xs text-gray-400">
-            <Badge variant="secondary" className="text-[11px]">
-              {filteredBusinesses.length} results
-            </Badge>
+            <span className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-[11px]">
+                {filteredBusinesses.length} results
+              </Badge>
+              {isRefreshing && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-label="Updating" />
+              )}
+            </span>
             <div className="flex items-center gap-2 bg-dark-bg border border-gray-800 rounded-full p-1">
               <Button
                 size="sm"

@@ -1,6 +1,8 @@
 /* Popups. Marker styles live in the "Venue markers" section below. */
 .mapboxgl-popup {
   max-width: 320px;
+  /* Above the venue pins (z-index 1-2), which otherwise draw over the card */
+  z-index: 5;
 }
 
 .mapboxgl-popup-content {
@@ -38,19 +40,27 @@
 
 .wf-venue-marker {
   --wf-marker-color: #6c5ce7;
-  position: relative;
+  /* Mapbox sets position: absolute on markers; overriding it puts pins in
+     normal flow, stacked on each other and shifting as pins come and go. */
   width: 34px;
   height: 34px;
   cursor: pointer;
-  will-change: transform;
-  transition: transform 0.16s ease;
+  /* No transform or transition on this element. Mapbox positions the marker
+     by rewriting this element's transform on every frame; a transition here
+     makes pins slide behind the map while panning, and a hover scale here
+     replaces Mapbox's translate so the pin jumps away. Hover effects go on
+     the chip below instead. */
 }
 
 .wf-venue-marker:hover,
 .wf-venue-marker:focus-visible {
-  transform: scale(1.12);
   outline: none;
   z-index: 2;
+}
+
+.wf-venue-marker:hover .wf-venue-marker__chip,
+.wf-venue-marker:focus-visible .wf-venue-marker__chip {
+  transform: scale(1.12);
 }
 
 .wf-venue-marker__chip {
@@ -66,7 +76,7 @@
   box-shadow:
     0 4px 10px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(0, 0, 0, 0.35);
-  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .wf-venue-marker__art {
@@ -221,7 +231,6 @@
 .wf-hotspot {
   --wf-hotspot-size: 56px;
   --wf-hotspot-speed: 3.4s;
-  position: relative;
   width: var(--wf-hotspot-size);
   height: var(--wf-hotspot-size);
   /* Decoration only - clicks go through to the map and the pins */

@@ -50,7 +50,10 @@ function trackAdImpressions(ads: any[]) {
 }
 
 async function attachSponsorship<T extends { id: string }>(items: T[]) {
-  const ads = await getActiveAdsForBusinesses(items.map((item) => item.id))
+  // A demo venue's sample ads never buy it placement above real listings.
+  const ads = await getActiveAdsForBusinesses(
+    items.filter((item: any) => !item.isExampleData).map((item) => item.id)
+  )
   const adByBusinessId = new Map<string, any>()
   for (const ad of ads) {
     if (!adByBusinessId.has(ad.businessId)) adByBusinessId.set(ad.businessId, ad)
@@ -327,6 +330,14 @@ export const businessService = {
         longitude: true,
         approvalStatus: true,
         isVerified: true,
+        // Shown on the map cards/popups (address line, Unclaimed / Example badges)
+        address: true,
+        city: true,
+        state: true,
+        rating: true,
+        totalReviews: true,
+        isClaimed: true,
+        isExampleData: true,
       },
     })
     return attachSponsorship(results as any)
@@ -351,7 +362,8 @@ export const businessService = {
     })
     if (!business) return business
 
-    const activeAd = await advertisementRepo.findFirst({
+    // The example venue's sample ads never show as a real sponsorship.
+    const activeAd = business.isExampleData ? null : await advertisementRepo.findFirst({
       where: {
         businessId: id,
         isActive: true,

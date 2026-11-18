@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import mapboxgl from 'mapbox-gl'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import type { GeoJSONSource } from 'mapbox-gl'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Slider } from '@/components/ui/Slider'
@@ -17,12 +17,52 @@ import {
   useBookingLocations,
   useEarningsHeatmap,
 } from '@/hooks/useServiceArea'
-import { createCircleGeoJSON, formatDistance } from '@/lib/mapbox'
+import { createCircleGeoJSON, formatDistance, whenStyleReady } from '@/lib/mapbox'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import type { Business } from '../../../../shared/types/business'
 import type { Map as MapboxMap } from 'mapbox-gl'
 
 type Tab = 'service' | 'opportunities' | 'bookings' | 'earnings'
+
+const CIRCLE_SOURCE = 'service-area-circle'
+const CIRCLE_LAYER = 'service-area-fill'
+
+/**
+ * The service-area circle, as a map overlay like the others: MapContainer
+ * remounts overlays after a basemap style switch, which wipes custom layers.
+ */
+function ServiceAreaCircle({ map, data }: { map: MapboxMap; data: any }) {
+  useEffect(() => {
+    const draw = () => {
+      const source = map.getSource(CIRCLE_SOURCE) as GeoJSONSource | undefined
+      if (source) {
+        source.setData(data)
+        return
+      }
+      map.addSource(CIRCLE_SOURCE, { type: 'geojson', data })
+      map.addLayer({
+        id: CIRCLE_LAYER,
+        type: 'fill',
+        source: CIRCLE_SOURCE,
+        paint: { 'fill-color': '#6C5CE7', 'fill-opacity': 0.2, 'fill-outline-color': '#6C5CE7' },
+      })
+    }
+    return whenStyleReady(map, draw)
+  }, [map, data])
+
+  useEffect(
+    () => () => {
+      try {
+        if (map.getLayer(CIRCLE_LAYER)) map.removeLayer(CIRCLE_LAYER)
+        if (map.getSource(CIRCLE_SOURCE)) map.removeSource(CIRCLE_SOURCE)
+      } catch {
+        // map already removed
+      }
+    },
+    [map]
+  )
+  return null
+}
 
 export default function WaveLeaderMapPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -65,39 +105,6 @@ export default function WaveLeaderMapPage() {
       geometry: circle,
     }
   }, [localCenter, localRadius])
-
-  const updateCircle = useCallback(
-    (map: MapboxMap) => {
-      if (!map || !circleSource) return
-      const sourceId = 'service-area-circle'
-      const source = map.getSource(sourceId)
-      if (source) {
-        ;(source as mapboxgl.GeoJSONSource).setData(circleSource)
-      } else {
-        map.addSource(sourceId, {
-          type: 'geojson',
-          data: circleSource,
-        })
-        map.addLayer({
-          id: 'service-area-fill',
-          type: 'fill',
-          source: sourceId,
-          paint: {
-            'fill-color': '#6C5CE7',
-            'fill-opacity': 0.2,
-            'fill-outline-color': '#6C5CE7',
-          },
-        })
-      }
-    },
-    [circleSource]
-  )
-
-  useEffect(() => {
-    if (mapRef.current && circleSource) {
-      updateCircle(mapRef.current)
-    }
-  }, [circleSource, updateCircle])
 
   const handleSaveServiceArea = () => {
     if (!localCenter) return
@@ -337,12 +344,12 @@ export default function WaveLeaderMapPage() {
             if (localCenter) {
               map.flyTo({ center: localCenter, zoom: 12 })
             }
-            updateCircle(map)
           }}
           className="h-full w-full"
         >
           {(map) => (
             <>
+              {circleSource && <ServiceAreaCircle map={map} data={circleSource} />}
               {localCenter && (
                 <MapMarker
                   map={map}

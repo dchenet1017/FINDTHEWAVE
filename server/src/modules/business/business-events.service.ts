@@ -41,7 +41,7 @@ async function assertEventOwned(eventId: string, businessId: string) {
 function applyPublishMode(
   data: CreateInput | UpdateInput,
   existing?: { status: EventStatus; isPublished: boolean }
-): Pick<Prisma.EventUpdateInput, 'status' | 'isPublished' | 'scheduledPublishAt'> {
+): { status: EventStatus; isPublished: boolean; scheduledPublishAt: Date | null } {
   const mode = data.publishMode ?? 'draft'
   if (mode === 'publish') {
     return { status: 'PUBLISHED', isPublished: true, scheduledPublishAt: null }
@@ -108,7 +108,9 @@ function toCreateData(
     maxAttendees: input.maxAttendees ?? null,
     registrationDeadline: regDeadline,
     ticketPrice: input.ticketPrice != null ? input.ticketPrice : null,
-    featuredWaveLeaderId: input.featuredWaveLeaderId || null,
+    ...(input.featuredWaveLeaderId
+      ? { featuredWaveLeader: { connect: { id: input.featuredWaveLeaderId } } }
+      : {}),
     waveLeaderRate: input.waveLeaderRate != null ? input.waveLeaderRate : null,
     isFeatured: input.isFeatured,
     status: pub.status as EventStatus,
@@ -249,7 +251,9 @@ export async function updateBusinessEvent(userId: string, eventId: string, input
       : null
   if (input.ticketPrice !== undefined) patch.ticketPrice = input.ticketPrice
   if (input.featuredWaveLeaderId !== undefined)
-    patch.featuredWaveLeaderId = input.featuredWaveLeaderId || null
+    patch.featuredWaveLeader = input.featuredWaveLeaderId
+      ? { connect: { id: input.featuredWaveLeaderId } }
+      : { disconnect: true }
   if (input.waveLeaderRate !== undefined) patch.waveLeaderRate = input.waveLeaderRate
   if (input.isFeatured !== undefined) patch.isFeatured = input.isFeatured
   if (input.scheduledPublishAt !== undefined && !input.publishMode)

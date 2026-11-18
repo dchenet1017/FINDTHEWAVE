@@ -13,8 +13,24 @@ if (!mapboxgl.accessToken) {
   )
 }
 
+/** Downtown Brooklyn / Myrtle Ave pilot area, where the listings are. [lng, lat] */
+export const PILOT_CENTER: [number, number] = [-73.9845, 40.6925]
+
+/**
+ * Within this many miles of the pilot the map follows the user's own location.
+ * Further away (e.g. someone demoing from another city) it stays on the pilot
+ * area, so the map isn't empty.
+ */
+export const PILOT_RADIUS_MILES = 25
+
+export function isNearPilot(lat: number, lng: number) {
+  const dLat = (lat - PILOT_CENTER[1]) * 69
+  const dLng = (lng - PILOT_CENTER[0]) * 69 * Math.cos((PILOT_CENTER[1] * Math.PI) / 180)
+  return Math.hypot(dLat, dLng) <= PILOT_RADIUS_MILES
+}
+
 export const defaultMapConfig = {
-  center: [-74.006, 40.7128] as [number, number], // NYC
+  center: PILOT_CENTER,
   zoom: 13,
   style: 'mapbox://styles/mapbox/dark-v11',
 }
@@ -151,4 +167,43 @@ export async function reverseGeocode(
   const data = await res.json()
   if (!data.features?.length) return ''
   return data.features[0].place_name || ''
+}
+
+/**
+ * Run `fn` once the map's style can take new sources/layers, and return a
+ * cancel function for effect cleanup.
+ *
+ * Overlays used to wait for the map's 'load' event when isStyleLoaded() was
+ * false. But 'load' fires only once per map, and isStyleLoaded() is also false
+ * for a moment while another overlay's data is loading. An overlay that
+ * mounted in that moment waited forever and never appeared (e.g. competitor
+ * pins on the business map).
+ */
+export function whenStyleReady(map: mapboxgl.Map, fn: () => void): () => void {
+  let cancelled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const attempt = () => {
+    if (cancelled) return
+    let ready = false
+    try {
+      // Whether the style itself is parsed, which is all addSource/addLayer
+      // need. Unlike isStyleLoaded(), it doesn't flip back to false while some
+      // other overlay's data is still loading.
+      ready = Boolean((map as any).style?._loaded ?? map.isStyleLoaded())
+    } catch {
+      return // map was removed
+    }
+    if (ready) {
+      fn()
+      return
+    }
+    // Retry on a timer, not from a map event: map events can fire mid-frame,
+    // and adding layers there breaks mapbox's label placement.
+    timer = setTimeout(attempt, 50)
+  }
+  attempt()
+  return () => {
+    cancelled = true
+    if (timer) clearTimeout(timer)
+  }
 }

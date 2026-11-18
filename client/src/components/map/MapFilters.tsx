@@ -4,7 +4,7 @@ import { Slider } from '@/components/ui/Slider'
 import { Switch } from '@/components/ui/Switch'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import type { BusinessType } from '../../../shared/types/business'
+import type { BusinessType } from '../../../../shared/types/business'
 
 type MapFiltersProps = {
   search?: string

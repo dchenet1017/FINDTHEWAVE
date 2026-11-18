@@ -50,6 +50,69 @@ api.interceptors.request.use(
   }
 )
 
+// Pages that need a signed-in user. When the session can't be renewed we only
+// send people to /login from these; on public pages (landing, map, events...)
+// a stale token is simply dropped so the visitor keeps browsing.
+// (/business/:id, /waveleader/:id/profile and /booking/:id are public.)
+const PROTECTED_PATHS = [
+  /^\/(dashboard|admin|onboarding)(\/|$)/,
+  /^\/business\/?$/,
+  /^\/business\/(dashboard|analytics|map|ads|events|crawls|go-out|onboarding|promotions|reviews|customers|revenue|profile|settings)(\/|$)/,
+  /^\/waveleader\/(register|dashboard|bookings|map|communities|earnings|analytics|profile|settings)(\/|$)/,
+  /^\/booking\/(confirmation\/|[^/]+\/(payment|review)$)/,
+]
+
+function isProtectedPath(path: string) {
+  return PROTECTED_PATHS.some((re) => re.test(path))
+}
+
+function endSession() {
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
+  const path = window.location.pathname
+  if (isProtectedPath(path) && path !== '/login') {
+    window.location.href = `/login?redirect=${encodeURIComponent(path + window.location.search)}`
+  }
+}
+
+// One refresh at a time. A dashboard fires several requests at once; when the
+// 15-minute access token expires they all get 401 together. The server rotates
+// the refresh token on use, so if each request refreshed on its own, the first
+// would win and the rest would fail and log the user out. They share this
+// promise instead.
+let refreshInFlight: Promise<string | null> | null = null
+
+function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
+  const refreshToken = localStorage.getItem('refreshToken')
+  if (!refreshToken) return Promise.resolve(null)
+
+  refreshInFlight = axios
+    .post<{ success: boolean; data?: { accessToken: string; refreshToken: string } }>(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+      { headers: { 'Content-Type': 'application/json' } }
+    )
+    .then((response) => {
+      if (!response.data.success || !response.data.data) return null
+      const { accessToken, refreshToken: newRefreshToken } = response.data.data
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('refreshToken', newRefreshToken)
+      return accessToken
+    })
+    .catch(() => {
+      // Another tab may have rotated the token a moment ago; if so it left a
+      // fresh pair in localStorage, which we can use.
+      const current = localStorage.getItem('refreshToken')
+      return current && current !== refreshToken ? localStorage.getItem('accessToken') : null
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+
+  return refreshInFlight
+}
+
 // Response interceptor - handle 401 and refresh
 api.interceptors.response.use(
   (response) => response,
@@ -58,61 +121,24 @@ api.interceptors.response.use(
       _retry?: boolean
     }
 
-    // Handle 401 errors
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthCall = /\/auth\/(login|register|refresh)$/.test(originalRequest?.url ?? '')
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true
 
-      const refreshToken = localStorage.getItem('refreshToken')
+      // If a newer token arrived while this request was in flight (another
+      // request or tab refreshed), just retry with it.
+      const sentWith = String(originalRequest.headers?.Authorization ?? '').replace(/^Bearer /, '')
+      const stored = localStorage.getItem('accessToken')
+      const accessToken = stored && stored !== sentWith ? stored : await refreshAccessToken()
 
-      if (!refreshToken) {
-        // No refresh token, clear everything and redirect to login
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        window.location.href = '/login'
+      if (!accessToken) {
+        endSession()
         return Promise.reject(error)
       }
 
-      try {
-        // Attempt to refresh token
-        const response = await axios.post<{
-          success: boolean
-          data?: {
-            accessToken: string
-            refreshToken: string
-          }
-        }>(
-          `${API_BASE_URL}/auth/refresh`,
-          {
-            refreshToken,
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        )
-
-        if (response.data.success && response.data.data) {
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data
-
-          // Store new tokens
-          localStorage.setItem('accessToken', accessToken)
-          localStorage.setItem('refreshToken', newRefreshToken)
-
-          // Update authorization header and retry original request
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`
-          }
-
-          return api(originalRequest)
-        }
-      } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
-      }
+      originalRequest.headers = { ...(originalRequest.headers ?? {}), Authorization: `Bearer ${accessToken}` }
+      return api(originalRequest)
     }
 
     return Promise.reject(error)

@@ -186,6 +186,25 @@ export default function BusinessDetail() {
               <CardTitle className="text-white">Owner Information</CardTitle>
             </CardHeader>
             <CardContent>
+              {!business.user ? (
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium text-white">Unclaimed listing</p>
+                  <p className="text-gray-400">
+                    Imported from a public directory. No owner account is linked yet.
+                  </p>
+                  {business.sourceUrl && (
+                    <a
+                      href={business.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      View source listing
+                    </a>
+                  )}
+                </div>
+              ) : (
+              <>
               <div className="flex items-center gap-3 mb-4">
                 <Avatar
                   src={business.user.avatar || undefined}
@@ -209,6 +228,8 @@ export default function BusinessDetail() {
                   View Owner Profile
                 </Button>
               </Link>
+              </>
+              )}
             </CardContent>
           </Card>
 

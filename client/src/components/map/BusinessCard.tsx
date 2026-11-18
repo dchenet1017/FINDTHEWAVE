@@ -1,7 +1,8 @@
 import { ShieldCheck, Star, MapPin, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
-import type { Business } from '../../../shared/types/business'
+import { ListingBadges } from './ListingBadges'
+import type { Business } from '../../../../shared/types/business'
 
 interface BusinessCardProps {
   business: Business & { distance?: number; promotions?: any[] }
@@ -61,6 +62,7 @@ export function BusinessCard({ business, selected, onClick }: BusinessCardProps)
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-white line-clamp-1">{business.name}</p>
+          <ListingBadges business={business} className="shrink-0" />
           {isSponsored && (
             <Badge variant="warning" className="text-[10px] px-1.5 py-0">
               Sponsored
@@ -73,7 +75,10 @@ export function BusinessCard({ business, selected, onClick }: BusinessCardProps)
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <MapPin className="h-3.5 w-3.5" />
           <span className="line-clamp-1">
-            {business.city ? `${business.city}${business.state ? ', ' + business.state : ''}` : 'Unknown'}
+            {(business as any).address ||
+              ((business as any).city
+                ? `${(business as any).city}${(business as any).state ? ', ' + (business as any).state : ''}`
+                : 'Address not listed')}
           </span>
           {distance !== undefined && (
             <span className="text-primary">{distance.toFixed(1)} mi</span>

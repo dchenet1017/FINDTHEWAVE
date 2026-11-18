@@ -611,6 +611,8 @@ export const getCompetitors = async (userId: string, radius: number) => {
       type: business.type,
       isActive: true,
       approvalStatus: 'APPROVED',
+      // A real venue never benchmarks against the demo venue.
+      ...(business.isExampleData ? {} : { isExampleData: false }),
       latitude: { gte: baseLat - deg, lte: baseLat + deg },
       longitude: { gte: baseLng - deg, lte: baseLng + deg },
     },

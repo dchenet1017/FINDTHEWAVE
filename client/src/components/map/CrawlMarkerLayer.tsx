@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { whenStyleReady } from '@/lib/mapbox'
 import type { Map as MapboxMap, GeoJSONSource, MapLayerMouseEvent } from 'mapbox-gl'
 import type { Crawl } from '@/types/crawl'
 
@@ -100,10 +101,10 @@ export function CrawlMarkerLayer({ map, crawls, selectedId, onClick }: Props) {
       }
     }
 
-    if (map.isStyleLoaded()) addLayers()
-    else map.once('load', addLayers)
+    const cancelReady = whenStyleReady(map, addLayers)
 
     return () => {
+      cancelReady()
       try {
         if (!map) return
         if (map.getLayer(POINTS_LAYER_ID)) map.removeLayer(POINTS_LAYER_ID)

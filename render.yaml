@@ -11,7 +11,7 @@ services:
     runtime: node
     plan: free
     autoDeploy: yes
-    buildCommand: npm install && cd server && npm run build && npx prisma db push
+    buildCommand: npm install && cd server && npm run build && npx prisma db push --accept-data-loss
     startCommand: cd server && npm start
     # Liveness only - does not touch the database, so a DB blip cannot get the
     # whole service restarted. Use /health/ready when diagnosing a deploy.
@@ -21,6 +21,10 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: TZ
+        # The pilot is in Brooklyn. Peak hours, "today's check-ins" and other
+        # day/hour buckets use the server clock, which is UTC without this.
+        value: America/New_York
       - key: DATABASE_URL
         fromDatabase:
           name: wavefinder-db
@@ -66,6 +70,15 @@ services:
         # REQUIRED for maps. Frontend only - the server never uses Mapbox.
         # Also inlined at build time.
         sync: false
+    headers:
+      # The service worker must always be revalidated, or users keep running
+      # an old build until the CDN copy expires.
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: no-cache
     routes:
       - type: rewrite
         source: /*

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { whenStyleReady } from '@/lib/mapbox'
 import mapboxgl, { type Map as MapboxMap, type GeoJSONSource } from 'mapbox-gl'
 import {
   createVenueMarkerElement,
@@ -203,19 +204,51 @@ export function BusinessMarkerLayer({
     }
   }, [map])
 
-  // Source + cluster layers
+  // Latest data for the source to start from, read by the layer effect below
+  // so it doesn't have to depend on geojson.
+  const geojsonRef = useRef(geojson)
+  useEffect(() => {
+    geojsonRef.current = geojson
+  }, [geojson])
+
+  // Source + cluster layers, created once per map
   useEffect(() => {
     if (!map) return
     const markers = markersRef.current
+
+    const onClusterClick = (e: mapboxgl.MapMouseEvent) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER_ID] })
+      const clusterIdRaw = features[0]?.properties?.cluster_id
+      const source = map.getSource(SOURCE_ID) as GeoJSONSource
+      if (typeof clusterIdRaw !== 'number' || !source) return
+      source.getClusterExpansionZoom(clusterIdRaw, (err, zoom) => {
+        if (err) return
+        const lng = Number((features[0].geometry as any)?.coordinates?.[0] ?? NaN)
+        const lat = Number((features[0].geometry as any)?.coordinates?.[1] ?? NaN)
+        if (Number.isNaN(lng) || Number.isNaN(lat)) return
+        const zoomValue = typeof zoom === 'number' ? zoom : Number(zoom)
+        if (Number.isNaN(zoomValue)) return
+        map.easeTo({ center: [lng, lat] as [number, number], zoom: zoomValue })
+      })
+    }
+    const onClusterEnter = () => {
+      map.getCanvas().style.cursor = 'pointer'
+    }
+    const onClusterLeave = () => {
+      map.getCanvas().style.cursor = ''
+    }
 
     const addLayers = () => {
       if (map.getSource(SOURCE_ID)) return
       try {
         map.addSource(SOURCE_ID, {
           type: 'geojson',
-          data: geojson,
+          data: geojsonRef.current,
           cluster: true,
-          clusterMaxZoom: 14,
+          // Downtown Brooklyn packs dozens of venues into single buildings
+          // (City Point, DeKalb Market Hall); keep grouping them until street
+          // level so the pins don't pile on top of each other.
+          clusterMaxZoom: 16,
           clusterRadius: 50,
         })
         ownsSourceRef.current = true
@@ -249,35 +282,17 @@ export function BusinessMarkerLayer({
       })
 
       // Cluster click -> zoom in
-      map.on('click', CLUSTER_LAYER_ID, (e) => {
-        const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER_ID] })
-        const clusterIdRaw = features[0]?.properties?.cluster_id
-        const source = map.getSource(SOURCE_ID) as GeoJSONSource
-        if (typeof clusterIdRaw !== 'number' || !source) return
-        source.getClusterExpansionZoom(clusterIdRaw, (err, zoom) => {
-          if (err) return
-          const lng = Number((features[0].geometry as any)?.coordinates?.[0] ?? NaN)
-          const lat = Number((features[0].geometry as any)?.coordinates?.[1] ?? NaN)
-          if (Number.isNaN(lng) || Number.isNaN(lat)) return
-          const zoomValue = typeof zoom === 'number' ? zoom : Number(zoom)
-          if (Number.isNaN(zoomValue)) return
-          map.easeTo({ center: [lng, lat] as [number, number], zoom: zoomValue })
-        })
-      })
-
-      map.on('mouseenter', CLUSTER_LAYER_ID, () => (map.getCanvas().style.cursor = 'pointer'))
-      map.on('mouseleave', CLUSTER_LAYER_ID, () => (map.getCanvas().style.cursor = ''))
+      map.on('click', CLUSTER_LAYER_ID, onClusterClick)
+      map.on('mouseenter', CLUSTER_LAYER_ID, onClusterEnter)
+      map.on('mouseleave', CLUSTER_LAYER_ID, onClusterLeave)
 
       syncMarkers()
     }
 
-    if (map.isStyleLoaded()) {
-      addLayers()
-    } else {
-      map.once('load', addLayers)
-    }
+    const cancelReady = whenStyleReady(map, addLayers)
 
     return () => {
+      cancelReady()
       try {
         for (const [, entry] of markers) {
           entry.el.removeEventListener('click', entry.onClick)
@@ -285,16 +300,26 @@ export function BusinessMarkerLayer({
         }
         markers.clear()
 
-        if (!map) return
+        // Only the instance that created the source and layers removes them.
+        // Otherwise unmounting e.g. the favourites layer on UserMapPage took
+        // the main layer's clusters with it.
+        if (!ownsSourceRef.current) return
+        ownsSourceRef.current = false
+        map.off('click', CLUSTER_LAYER_ID, onClusterClick)
+        map.off('mouseenter', CLUSTER_LAYER_ID, onClusterEnter)
+        map.off('mouseleave', CLUSTER_LAYER_ID, onClusterLeave)
         if (safeHasLayer(map, CLUSTER_LAYER_ID)) map.removeLayer(CLUSTER_LAYER_ID)
         if (safeHasLayer(map, CLUSTER_COUNT_ID)) map.removeLayer(CLUSTER_COUNT_ID)
-        if (ownsSourceRef.current && safeHasSource(map, SOURCE_ID)) map.removeSource(SOURCE_ID)
-        ownsSourceRef.current = false
+        if (safeHasSource(map, SOURCE_ID)) map.removeSource(SOURCE_ID)
       } catch {
         // map was already destroyed during navigation
       }
     }
-  }, [map, geojson, syncMarkers])
+    // geojson is deliberately not a dependency: new data goes in through
+    // setData below. Rebuilding on every data change (i.e. every pan) wiped
+    // all the pins and made them blink out and back on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, syncMarkers])
 
   // Keep markers in step with clustering as the map moves
   useEffect(() => {

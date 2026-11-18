@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl, { Map as MapboxMap } from 'mapbox-gl'
+import { whenStyleReady } from '@/lib/mapbox'
 import type { CheckInLocation } from '@/services/user.service'
 
 const typeColors: Record<string, string> = {
@@ -50,6 +51,7 @@ export function CheckInMapMarkers({ map, locations, onLocationSelect }: CheckInM
 
   useEffect(() => {
     if (!map) return
+    let cancelPath = () => {}
 
     // Cleanup previous markers
     markersRef.current.forEach((marker) => marker.remove())
@@ -115,14 +117,11 @@ export function CheckInMapMarkers({ map, locations, onLocationSelect }: CheckInM
         }
       }
 
-      if (map.isStyleLoaded()) {
-        addPath()
-      } else {
-        map.once('load', addPath)
-      }
+      cancelPath = whenStyleReady(map, addPath)
     }
 
     return () => {
+      cancelPath()
       // Cleanup markers
       markersRef.current.forEach((marker) => marker.remove())
       markersRef.current = []

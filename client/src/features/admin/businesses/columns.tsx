@@ -41,9 +41,10 @@ export const businessColumns: ColumnDef<Business>[] = [
     header: 'Owner',
     cell: ({ row }) => {
       const user = row.original.user
-      const fullName = user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user.email.split('@')[0]
+      // Imported directory listings have no owner until someone claims them.
+      if (!user) {
+        return <span className="text-sm text-gray-400 italic">Unclaimed listing</span>
+      }
       const initials = user.firstName?.[0] || user.email[0].toUpperCase()
 
       return (

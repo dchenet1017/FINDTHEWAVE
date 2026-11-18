@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { userService } from '@/services/user.service'
-import type { Business } from '../../../../shared/types/business'
+import type { Business } from '../../../shared/types/business'
 
 export const useFavorites = () => {
   return useQuery<Business[]>({

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import mapboxgl, { Map as MapboxMap, Marker } from 'mapbox-gl'
 import {
   createVenueMarkerElement,
+  setVenueMarkerOffer,
   setVenueMarkerSelected,
   type VenueMarkerType,
 } from '@/components/map/markers/venueMarkerFactory'
@@ -50,24 +51,35 @@ export function MapMarker({
   // Destructured so the dependency array stays statically checkable
   const [lng, lat] = position
 
+  // Pages pass a new onClick arrow and new popup JSX on every render. If the
+  // effect below depended on them, every re-render of the page (each pan
+  // re-renders it) tore down and rebuilt every pin, so they all blinked.
+  // The latest onClick is read through a ref instead, and the popup only
+  // depends on whether there is popup content at all.
+  const onClickRef = useRef(onClick)
+  useEffect(() => {
+    onClickRef.current = onClick
+  })
+  const hasPopup = Boolean(children)
+
   useEffect(() => {
     if (!map || typeof map.getContainer !== 'function' || !map.getContainer()) return
 
-    // isSelected is applied by the effect below, so it stays out of here and
-    // a selection change never rebuilds the element.
+    // isSelected and hasActiveOffer are applied in place by the effects
+    // below, so changing them never rebuilds the element.
     const el = createVenueMarkerElement(type, {
       isSponsored,
-      hasActiveOffer,
       label,
     })
 
-    if (onClick) el.addEventListener('click', onClick)
+    const handleClick = () => onClickRef.current?.()
+    el.addEventListener('click', handleClick)
 
     const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
       .setLngLat([lng, lat])
       .addTo(map)
 
-    if (children) {
+    if (hasPopup) {
       try {
         popupContainer.className = 'wavefinder-popup'
 
@@ -89,20 +101,27 @@ export function MapMarker({
 
     return () => {
       try {
-        if (onClick) el.removeEventListener('click', onClick)
+        el.removeEventListener('click', handleClick)
         popupRef.current?.remove()
         marker.remove()
       } catch {
         // already detached
       }
       popupRef.current = null
+      elRef.current = null
     }
-  }, [map, lng, lat, type, isSponsored, hasActiveOffer, label, onClick, children, popupContainer])
+  }, [map, lng, lat, type, isSponsored, label, hasPopup, popupContainer])
 
-  // Selection toggles in place so the animation does not restart
+  // Selection and the offer badge toggle in place so the animation does not
+  // restart. They also re-apply after a rebuild (the effect above clears
+  // elRef), via the extra dependencies.
   useEffect(() => {
     if (elRef.current) setVenueMarkerSelected(elRef.current, isSelected)
-  }, [isSelected])
+  }, [isSelected, map, lng, lat, type, isSponsored, label, hasPopup])
+
+  useEffect(() => {
+    if (elRef.current) setVenueMarkerOffer(elRef.current, hasActiveOffer)
+  }, [hasActiveOffer, map, lng, lat, type, isSponsored, label, hasPopup])
 
   return children ? createPortal(children, popupContainer) : null
 }

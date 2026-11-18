@@ -139,7 +139,11 @@ export function CheckInButton({
         return (
           <>
             <MapPin className="h-4 w-4" />
-            <span>{distance ? formatDistance(distance) : 'Too far away'}</span>
+            {/* Far away (e.g. browsing from home) a raw distance like
+                "3,965 mi away" just looks broken - say what to do instead */}
+            <span>
+              {distance && distance < 40000 ? formatDistance(distance) : 'Check in on site'}
+            </span>
           </>
         )
       case 'already-checked-in':

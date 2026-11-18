@@ -70,9 +70,9 @@ export default function EventsPage() {
 
   const dateRange = useMemo(() => {
     if (filters.datePreset === 'custom') {
-      return { dateFrom: filters.dateFrom, dateTo: filters.dateTo }
+      return { from: filters.dateFrom, to: filters.dateTo }
     }
-    if (filters.datePreset === 'all') return { dateFrom: undefined, dateTo: undefined }
+    if (filters.datePreset === 'all') return { from: undefined, to: undefined }
     return rangeForDatePreset(
       filters.datePreset,
       filters.dateFrom ? new Date(filters.dateFrom) : undefined,

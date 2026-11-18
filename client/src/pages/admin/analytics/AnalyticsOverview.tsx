@@ -76,10 +76,10 @@ export default function AnalyticsOverview() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'analytics', dateRange],
-    queryFn: () => adminService.getAnalytics({
+    queryFn: async (): Promise<any> => (await adminService.getAnalytics({
       startDate: start.toISOString(),
       endDate: end.toISOString(),
-    }),
+    })).data.data,
   })
 
   if (isLoading) {

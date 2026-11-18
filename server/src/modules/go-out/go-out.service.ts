@@ -34,11 +34,17 @@ interface NearbyIntentRow {
  *
  * Internal only - these rows carry userId, so never hand them to a business
  * caller without aggregating first.
+ *
+ * `exampleData` picks which world to look in: real accounts, or the sample
+ * accounts behind the demo venue. The two never see or reach each other, so
+ * demo hands never pad a real venue's demand and a demo venue never offers
+ * anything to a real person.
  */
 async function findNearbyIntents(
   lat: number,
   lng: number,
-  radiusMiles: number
+  radiusMiles: number,
+  exampleData: boolean
 ): Promise<NearbyIntentRow[]> {
   const now = new Date()
 
@@ -53,8 +59,10 @@ async function findNearbyIntents(
           ST_MakePoint($1, $2)::geography
         ) / ${MILES_TO_METERS} AS "distanceMiles"
       FROM "GoOutIntent" i
+      JOIN "User" u ON u."id" = i."userId"
       WHERE i."status" = 'ACTIVE'
         AND i."expiresAt" > NOW()
+        AND u."isExampleData" = $4
         AND ST_DWithin(
           ST_MakePoint(i."longitude"::float, i."latitude"::float)::geography,
           ST_MakePoint($1, $2)::geography,
@@ -64,7 +72,8 @@ async function findNearbyIntents(
     `,
         lng,
         lat,
-        radiusMiles * MILES_TO_METERS
+        radiusMiles * MILES_TO_METERS,
+        exampleData
       )
 
       return rows.map((r) => ({
@@ -88,6 +97,7 @@ async function findNearbyIntents(
       expiresAt: { gt: now },
       latitude: { gte: lat - deg, lte: lat + deg },
       longitude: { gte: lng - deg, lte: lng + deg },
+      user: { isExampleData: exampleData },
     },
     select: {
       id: true,
@@ -290,7 +300,8 @@ export async function getMyIntent(userId: string) {
 
   if (!intent) return { intent: null, nearbyCount: 0 }
 
-  const nearby = await findNearbyIntents(intent.latitude, intent.longitude, 10)
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { isExampleData: true } })
+  const nearby = await findNearbyIntents(intent.latitude, intent.longitude, 10, me?.isExampleData ?? false)
 
   return {
     intent: serializeIntent(intent),
@@ -323,10 +334,10 @@ export async function getActiveDemand(
   let lat = overrideLat
   let lng = overrideLng
 
+  const business = await prisma.business.findUnique({
+    where: { userId: requestingUserId },
+  })
   if (lat == null || lng == null) {
-    const business = await prisma.business.findUnique({
-      where: { userId: requestingUserId },
-    })
     if (!business) {
       throw new BadRequestError('lat and lng are required (no business location on file)')
     }
@@ -334,7 +345,7 @@ export async function getActiveDemand(
     lng = Number(business.longitude)
   }
 
-  const intents = await findNearbyIntents(lat, lng, radiusMiles)
+  const intents = await findNearbyIntents(lat, lng, radiusMiles, business?.isExampleData ?? false)
 
   const byVibe = VIBES.map((vibe) => ({
     vibe,
@@ -399,6 +410,10 @@ export async function sendOffer(requestingUserId: string, input: SendOfferInput)
   }
 
   if (input.broadcast) {
+    // Anyone can claim an open broadcast, so a demo venue must not post one.
+    if (business.isExampleData) {
+      throw new ForbiddenError('Example venues can only send offers to example accounts, not broadcasts')
+    }
     const offer = await prisma.businessOffer.create({
       data: { ...base, intentId: null },
       include: { business: { select: offerBusinessSelect } },
@@ -413,7 +428,7 @@ export async function sendOffer(requestingUserId: string, input: SendOfferInput)
 
   const lat = Number(business.latitude)
   const lng = Number(business.longitude)
-  const nearby = await findNearbyIntents(lat, lng, input.radiusMiles)
+  const nearby = await findNearbyIntents(lat, lng, input.radiusMiles, business.isExampleData)
 
   const matches = input.vibes?.length
     ? nearby.filter((i) => i.vibes.some((v) => input.vibes!.includes(v as Vibe)))
@@ -692,8 +707,9 @@ const HOTSPOT_MIN_HANDS = 3
 export async function getHotspots() {
   await expireStale()
 
+  // Public and unlabeled, so sample accounts never count toward it.
   const intents = await prisma.goOutIntent.findMany({
-    where: { status: 'ACTIVE', expiresAt: { gt: new Date() } },
+    where: { status: 'ACTIVE', expiresAt: { gt: new Date() }, user: { isExampleData: false } },
     select: { latitude: true, longitude: true, partySize: true, vibes: true },
   })
 

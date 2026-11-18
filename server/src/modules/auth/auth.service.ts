@@ -245,10 +245,21 @@ export class AuthService {
         }
       }
 
-      // Delete old refresh token (rotation)
-      await prisma.refreshToken.delete({
+      // Delete old refresh token (rotation). deleteMany doesn't throw when a
+      // parallel request already rotated it; that request won, so this one
+      // reports the token as used instead of crashing with "Failed to refresh".
+      const { count } = await prisma.refreshToken.deleteMany({
         where: { id: tokenRecord.id },
       })
+      if (count === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'INVALID_REFRESH_TOKEN',
+            message: 'Refresh token was already used',
+          },
+        }
+      }
 
       // Generate new tokens
       const tokens = await this.generateTokens(

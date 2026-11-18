@@ -84,6 +84,15 @@ export const useAuth = () => {
           return
         }
 
+        // Set when an expired session sent the user here (see lib/axios).
+        // Only same-site paths, never "//host" or a full URL.
+        const redirect = new URLSearchParams(location.search).get('redirect')
+        if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+          navigate(redirect, { replace: true })
+          toast.success('Welcome back!')
+          return
+        }
+
         navigate(homeRouteFor(data.data.user))
         toast.success('Welcome back!')
       } else {

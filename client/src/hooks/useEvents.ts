@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import api from '@/lib/axios'
 import type { Event, EventsListResponse, EventDiscoveryFilters } from '@/types/event'
 
@@ -83,6 +83,8 @@ export const useEvents = (
 export const useNearbyEvents = (lat: number | undefined, lng: number | undefined, radius: number) => {
   return useQuery<{ items: Event[] }>({
     queryKey: ['events', 'nearby', lat, lng, radius],
+    // Keep the event pins while a moved map centre loads (no blinking)
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const res = await api.get<ApiEnvelope<{ items: Event[] }>>('/events/nearby', {
         params: { lat, lng, radius },

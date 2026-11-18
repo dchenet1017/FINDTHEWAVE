@@ -3,6 +3,7 @@ import { Search, Menu, User, Settings, LogOut, HelpCircle, Bell } from 'lucide-r
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
+import { useMapStore } from '@/store/mapStore'
 import { Avatar } from '@/components/ui/Avatar'
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState('')
+  const setMapFilters = useMapStore((s) => s.setFilters)
 
   const userInitials = user
     ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() ||
@@ -34,10 +36,11 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchValue.trim()) {
-      // TODO: Implement search functionality
-      console.log('Search:', searchValue)
-    }
+    const q = searchValue.trim()
+    if (!q) return
+    // Search the explore map: it filters by the shared map store
+    setMapFilters({ search: q })
+    navigate('/dashboard/map')
   }
 
   return (

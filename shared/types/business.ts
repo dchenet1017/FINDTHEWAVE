@@ -47,7 +47,14 @@ export interface Business {
   website?: string | null
   images: string[]
   location: BusinessLocation
-  userId: string
+  /** Null for an unclaimed listing imported from a public directory */
+  userId: string | null
+  /** False until the business claims its imported listing */
+  isClaimed?: boolean
+  /** Sample venue for demos; always shown with an "Example data" label */
+  isExampleData?: boolean
+  source?: string | null
+  sourceUrl?: string | null
   user?: {
     id: string
     email: string

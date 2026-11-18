@@ -95,6 +95,12 @@ export default function BusinessDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-white">Welcome back, {businessName}!</h1>
           <p className="text-gray-400 mt-1">{todayLabel}</p>
+          {(myBusiness as any)?.isExampleData && (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-sm text-amber-200">
+              <span className="font-semibold uppercase tracking-wide text-amber-300">Example data</span>
+              Sample venue and activity for demonstration. Not a real business.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isVerified ? (

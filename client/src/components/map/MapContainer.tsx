@@ -18,7 +18,8 @@ interface MapContainerProps {
   onMapLoad?: (map: MapboxMap) => void
   onMoveEnd?: (map: MapboxMap) => void
   onClick?: (e: mapboxgl.MapMouseEvent) => void
-  children?: (map: MapboxMap | null) => React.ReactNode
+  /** Called only once the map and its style are ready, so `map` is never null. */
+  children?: (map: MapboxMap) => React.ReactNode
   showControls?: boolean
   showUserLocation?: boolean
   interactive?: boolean
@@ -47,6 +48,8 @@ export function MapContainer({
   // Use refs for initial values so the map isn't recreated when props change
   const initialCenterRef = useRef(initialCenter)
   const initialZoomRef = useRef(initialZoom)
+  const initialStyleRef = useRef(mapStyle)
+  const userMovedRef = useRef(false)
 
   // Store callbacks in refs to avoid map recreation on callback changes
   const onMapLoadRef = useRef(onMapLoad)
@@ -65,7 +68,7 @@ export function MapContainer({
     const map = new mapboxgl.Map({
       container: containerRef.current,
       accessToken: mapboxgl.accessToken || undefined,
-      style: mapStyles[mapStyle],
+      style: mapStyles[initialStyleRef.current],
       center: initialCenterRef.current,
       zoom: initialZoomRef.current,
       interactive,
@@ -98,6 +101,11 @@ export function MapContainer({
       onMoveEndRef.current?.(map)
     })
 
+    // Only real user gestures carry originalEvent; programmatic moves don't.
+    map.on('movestart', (e) => {
+      if ((e as any).originalEvent) userMovedRef.current = true
+    })
+
     map.on('click', (e) => {
       onClickRef.current?.(e)
     })
@@ -106,14 +114,44 @@ export function MapContainer({
       map.remove()
       mapRef.current = null
     }
-  }, [mapStyle, showControls, showUserLocation, interactive, tokenMissing])
+  }, [showControls, showUserLocation, interactive, tokenMissing])
 
-  // Style switcher handler
-  const handleStyleChange = (style: MapStyleKey) => {
-    setMapStyle(style)
-    if (mapRef.current) {
-      mapRef.current.setStyle(mapStyles[style])
+  // The centre often arrives after the map exists (the venue or user location
+  // is still loading). Go there once it does, unless the user already moved.
+  const centerKey = initialCenter ? `${initialCenter[0]},${initialCenter[1]}` : ''
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !initialCenter || userMovedRef.current) return
+    const [lng, lat] = initialCenter
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return
+    const c = map.getCenter()
+    if (Math.abs(c.lng - lng) > 1e-6 || Math.abs(c.lat - lat) > 1e-6) {
+      map.jumpTo({ center: [lng, lat] })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerKey, isLoaded])
+
+  // Style switcher. Keeps the same map (position, controls) and swaps only the
+  // basemap. setStyle wipes every custom source/layer, so the overlay children
+  // are unmounted first (isLoaded=false), then remounted on the new style to
+  // add their layers again. Recreating the map here used to leave overlays
+  // pointing at a half-built map and crash the page.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || mapStyle === initialStyleRef.current) return
+    initialStyleRef.current = mapStyle
+    const done = () => setIsLoaded(true)
+    map.once('style.load', done)
+    map.setStyle(mapStyles[mapStyle])
+    return () => {
+      map.off('style.load', done)
+    }
+  }, [mapStyle])
+
+  const handleStyleChange = (style: MapStyleKey) => {
+    if (style === mapStyle) return
+    setIsLoaded(false)
+    setMapStyle(style)
   }
 
   if (tokenMissing) {

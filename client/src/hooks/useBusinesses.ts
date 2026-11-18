@@ -32,7 +32,6 @@ export const useBusinesses = (filters: BusinessFilters) =>
     },
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
-    onError: (error) => handleError(error, 'Failed to load businesses'),
   })
 
 export const useBusiness = (id?: string) =>
@@ -44,7 +43,6 @@ export const useBusiness = (id?: string) =>
       return unwrapped
     },
     enabled: !!id,
-    onError: (error) => handleError(error, 'Failed to load business'),
   })
 
 export const useNearbyBusinesses = (query: NearbyBusinessQuery, enabled = true) =>
@@ -57,7 +55,6 @@ export const useNearbyBusinesses = (query: NearbyBusinessQuery, enabled = true) 
     },
     enabled,
     staleTime: 30 * 1000,
-    onError: (error) => handleError(error, 'Failed to load nearby businesses'),
   })
 
 export const useMapBusinesses = (bounds: MapBounds | null) =>
@@ -76,7 +73,6 @@ export const useMapBusinesses = (bounds: MapBounds | null) =>
     // back on with every map move.
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
-    onError: (error) => handleError(error, 'Failed to load map markers'),
   })
 
 export const useSearchBusinesses = (
@@ -92,7 +88,6 @@ export const useSearchBusinesses = (
     },
     enabled: Boolean(searchTerm?.length >= 2),
     staleTime: 15 * 1000,
-    onError: (error) => handleError(error, 'Search failed'),
   })
 
 export const useCreateBusiness = () => {
@@ -143,6 +138,5 @@ export const useBusinessTypeCounts = () =>
       return Array.isArray(unwrapped) ? unwrapped : []
     },
     staleTime: 5 * 60 * 1000,
-    onError: (error) => handleError(error, 'Failed to load type counts'),
   })
 

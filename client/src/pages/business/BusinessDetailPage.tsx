@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { MapContainer } from '@/components/map/MapContainer'
 import { MapMarker } from '@/components/map/MapMarker'
+import { ListingBadges } from '@/components/map/ListingBadges'
 import { cn } from '@/lib/utils'
 
 function BusinessDetailSkeleton() {
@@ -125,6 +126,7 @@ export default function BusinessDetailPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold text-white">{business.name}</h1>
+                  <ListingBadges business={business as any} />
                   {(business as any).isSponsored && <Badge variant="warning">Sponsored</Badge>}
                   {business.isVerified && <ShieldCheck className="h-5 w-5 text-success" />}
                 </div>

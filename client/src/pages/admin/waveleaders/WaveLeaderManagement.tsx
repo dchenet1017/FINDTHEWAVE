@@ -135,13 +135,13 @@ export default function WaveLeaderManagement() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'waveleaders', activeTab, search, specialty, page],
-    queryFn: () => adminService.getWaveLeaders({
+    queryFn: async (): Promise<any> => (await adminService.getWaveLeaders({
       status: activeTab,
       search,
       specialty: specialty === 'all' ? undefined : specialty,
       page,
       limit: 10,
-    }),
+    })).data.data,
   })
 
   const handleSearch = (value: string) => {

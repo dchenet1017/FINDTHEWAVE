@@ -272,8 +272,8 @@ export default function PlacesPage() {
                 <BusinessMarkerLayer
                   map={map}
                   businesses={filteredAndSortedPlaces.map((item) => item.business)}
-                  onMarkerClick={(business) => setSelectedBusiness(business)}
-                  highlightId={selectedBusiness?.id}
+                  onBusinessClick={(business) => setSelectedBusiness(business as any)}
+                  selectedId={selectedBusiness?.id}
                 />
               ) : null
             }}
